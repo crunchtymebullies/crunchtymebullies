@@ -11,7 +11,7 @@ export const revalidate = 60
 
 export async function generateStaticParams() {
   const dogs = await client.fetch<Dog[]>(DOGS_QUERY).catch(() => [])
-  return dogs.map((dog) => ({ slug: dog.slug.current }))
+  return dogs.map((dog) => ({ slug: dog.slug }))
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {

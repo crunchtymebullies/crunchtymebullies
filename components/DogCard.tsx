@@ -21,7 +21,7 @@ export default function DogCard({ dog, index = 0 }: { dog: Dog; index?: number }
       viewport={{ once: true }}
       transition={{ delay: index * 0.1, duration: 0.5 }}
     >
-      <Link href={`/dogs/${dog.slug.current}`} className="group block card card-hover">
+      <Link href={`/dogs/${dog.slug}`} className="group block card card-hover">
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-brand-charcoal">
           {dog.mainImage && (

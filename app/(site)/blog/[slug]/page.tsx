@@ -11,7 +11,7 @@ export const revalidate = 60
 
 export async function generateStaticParams() {
   const posts = await client.fetch<BlogPost[]>(BLOG_POSTS_QUERY).catch(() => [])
-  return posts.map((p) => ({ slug: p.slug.current }))
+  return posts.map((p) => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
