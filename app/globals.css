@@ -2,26 +2,150 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ═══════════════════════════════════════════════════════════
+   CRUNCHTIME BULLIES — Design System
+   Gold: #D0B970 → #A28445 → #D0B96E
+   Black: #0a0a0a
+   Fonts: Bleu Belle (display), Josefin Sans (heading), Poppins (body)
+   ═══════════════════════════════════════════════════════════ */
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body {
+    @apply bg-brand-black text-white font-body;
+  }
+
+  ::selection {
+    background: rgba(208, 185, 112, 0.3);
+    color: white;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #0a0a0a; }
+  ::-webkit-scrollbar-thumb { background: #A28445; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #D0B970; }
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer components {
+  /* ── Buttons ── */
+  .btn-gold {
+    @apply inline-block px-8 py-3.5 text-sm font-heading font-semibold tracking-[0.2em] uppercase
+           transition-all duration-300;
+    background: linear-gradient(90deg, #D0B970, #A28445, #D0B96E);
+    color: #0a0a0a;
+  }
+  .btn-gold:hover {
+    background: linear-gradient(90deg, #A28445, #D0B970, #A28445);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(208, 185, 112, 0.3);
+  }
+
+  .btn-gold-outline {
+    @apply inline-block border border-gold text-gold px-8 py-3.5
+           text-sm font-heading font-semibold tracking-[0.2em] uppercase
+           transition-all duration-300;
+  }
+  .btn-gold-outline:hover {
+    @apply bg-gold text-brand-black;
+    box-shadow: 0 4px 20px rgba(208, 185, 112, 0.2);
+  }
+
+  .btn-sm {
+    @apply px-5 py-2.5 text-xs;
+  }
+
+  /* ── Typography ── */
+  .section-label {
+    @apply text-gold text-xs tracking-[0.3em] uppercase mb-3 block font-heading;
+  }
+
+  .section-heading {
+    @apply text-white text-3xl md:text-4xl lg:text-5xl font-display mb-6 leading-tight;
+  }
+
+  .section-subheading {
+    @apply text-white/50 text-base md:text-lg font-body leading-relaxed max-w-2xl;
+  }
+
+  /* ── Decorative ── */
+  .gold-divider {
+    @apply w-16 h-px bg-gold block;
+  }
+
+  .gold-line {
+    @apply w-full h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent;
+  }
+
+  /* ── Cards ── */
+  .card {
+    @apply bg-brand-dark border border-white/5 overflow-hidden
+           transition-all duration-500;
+  }
+  .card:hover {
+    @apply border-gold/20;
+    box-shadow: 0 8px 32px rgba(208, 185, 112, 0.08);
+  }
+
+  .card-hover {
+    @apply transition-transform duration-500 hover:-translate-y-1;
+  }
+
+  /* ── Marquee ── */
+  .marquee-track {
+    @apply flex whitespace-nowrap animate-marquee;
+  }
+
+  .marquee-item {
+    @apply text-gold/30 text-sm tracking-[0.4em] uppercase font-heading mx-8;
+  }
+
+  .marquee-dot {
+    @apply w-1.5 h-1.5 rounded-full bg-gold/30 mx-8 flex-shrink-0 self-center;
+  }
+
+  /* ── Layout ── */
+  .page-section {
+    @apply max-w-site mx-auto px-4 md:px-8 lg:px-12;
+  }
+
+  .page-banner {
+    @apply relative py-24 md:py-32 bg-brand-dark overflow-hidden;
+  }
+
+  .page-banner-title {
+    @apply text-4xl md:text-6xl font-display text-white text-center relative z-10;
+  }
+
+  /* ── Inputs ── */
+  .input-field {
+    @apply w-full bg-brand-charcoal border border-white/10 px-4 py-3
+           text-white font-body text-sm placeholder:text-white/30
+           focus:border-gold/50 focus:outline-none transition-colors;
+  }
+
+  .textarea-field {
+    @apply input-field resize-none min-h-[140px];
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* ── Grain Overlay ── */
+.grain::after {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  right: -50%;
+  bottom: -50%;
+  width: 200%;
+  height: 200%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.015;
+  pointer-events: none;
+  z-index: 100;
 }
