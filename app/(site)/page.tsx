@@ -127,11 +127,15 @@ export default async function HomePage() {
 
           <div>
             {h.aboutText ? (
-              h.aboutText.map((block: any, i: number) => (
-                <p key={i} className="text-white/50 font-body leading-relaxed mb-6">
-                  {block.children?.map((c: any) => c.text).join('')}
-                </p>
-              ))
+              typeof h.aboutText === 'string' ? (
+                <p className="text-white/50 font-body leading-relaxed mb-6">{h.aboutText}</p>
+              ) : (
+                h.aboutText.map((block: any, i: number) => (
+                  <p key={i} className="text-white/50 font-body leading-relaxed mb-6">
+                    {block.children?.map((c: any) => c.text).join('')}
+                  </p>
+                ))
+              )
             ) : (
               <>
                 <p className="text-white/50 font-body leading-relaxed mb-6">
