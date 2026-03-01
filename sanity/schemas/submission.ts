@@ -5,7 +5,7 @@ export default defineType({
   title: 'Client Submission',
   type: 'document',
   fields: [
-    defineField({ name: 'submissionType', title: 'Type', type: 'string', options: { list: ['dog-photo', 'dog-info', 'stripe-credentials', 'store-info', 'branding', 'social', 'content', 'services'] } }),
+    defineField({ name: 'submissionType', title: 'Type', type: 'string', options: { list: ['dog-photo', 'dog-info', 'stripe-credentials', 'store-info', 'branding', 'social', 'content', 'services', 'developer-message', 'contact-form'] } }),
     defineField({ name: 'data', title: 'Submitted Data', type: 'object', fields: [
       defineField({ name: 'json', title: 'JSON Data', type: 'text' }),
     ]}),
