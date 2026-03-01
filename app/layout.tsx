@@ -2,8 +2,6 @@ import type { Metadata } from 'next'
 import { Josefin_Sans, Poppins } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
-import Header from '@/components/Header'
-import Footer from '@/components/Footer'
 
 const josefin = Josefin_Sans({
   subsets: ['latin'],
@@ -18,8 +16,6 @@ const poppins = Poppins({
   display: 'swap',
 })
 
-// Bleu Belle custom font - will be loaded from /app/fonts/
-// For now using Georgia as fallback until the .ttf is added
 const bleuBelle = localFont({
   src: './fonts/BleuBelle.ttf',
   variable: '--font-bleu-belle',
@@ -55,9 +51,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${josefin.variable} ${poppins.variable} ${bleuBelle.variable}`}>
       <body className="grain">
-        <Header />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
+        {children}
       </body>
     </html>
   )
