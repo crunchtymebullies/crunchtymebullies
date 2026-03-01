@@ -57,7 +57,8 @@ export default async function DogProfilePage({ params }: { params: { slug: strin
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           {/* Gallery */}
           <Reveal animation="clip-up" duration={900}>
-          <DogGallery images={allImages} />
+            <DogGallery images={allImages} />
+          </Reveal>
 
           {/* Details */}
           <div>
@@ -79,9 +80,7 @@ export default async function DogProfilePage({ params }: { params: { slug: strin
             <div className="gold-line mb-8" />
 
             {/* Quick Info */}
-            </Reveal>
-          <Reveal animation="fade-up" delay={300}>
-          <div className="grid grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-2 gap-4 mb-8">
               {dog.dob && (
                 <div className="flex items-center gap-3 p-3 bg-brand-dark border border-white/5">
                   <Calendar size={16} className="text-gold" />
