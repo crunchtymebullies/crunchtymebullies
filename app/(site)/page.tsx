@@ -1,55 +1,75 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { client, FEATURED_DOGS_QUERY, FEATURED_REVIEWS_QUERY, BLOG_POSTS_QUERY, SITE_SETTINGS_QUERY } from '@/lib/sanity'
-import { urlFor } from '@/lib/sanity'
+import { client, HOME_PAGE_QUERY, FEATURED_DOGS_QUERY, FEATURED_REVIEWS_QUERY, BLOG_POSTS_QUERY } from '@/lib/sanity'
 import DogCard from '@/components/DogCard'
 import ReviewCard from '@/components/ReviewCard'
 import Marquee from '@/components/Marquee'
 import Section from '@/components/Section'
-import type { Dog, Review, BlogPost, SiteSettings } from '@/lib/types'
-import { ArrowRight, Shield, Heart, Award } from 'lucide-react'
+import SanityImage from '@/components/SanityImage'
+import type { Dog, Review, BlogPost } from '@/lib/types'
+import { ArrowRight, Shield, Heart, Award, Star, CheckCircle } from 'lucide-react'
 
 export const revalidate = 60
 
+const iconMap: Record<string, any> = { Shield, Heart, Award, Star, Check: CheckCircle }
+
+function CTA({ cta, fallbackStyle }: { cta: any; fallbackStyle?: string }) {
+  if (!cta?.text || !cta?.href) return null
+  const style = cta.style || fallbackStyle || 'gold'
+  const cls = style === 'gold' ? 'btn-gold' : style === 'gold-outline' ? 'btn-gold-outline' : style === 'white' ? 'btn-gold' : 'btn-gold-outline'
+  return <Link href={cta.href} className={cls}>{cta.text}</Link>
+}
+
 export default async function HomePage() {
-  const [dogs, reviews, posts] = await Promise.all([
+  const [page, dogs, reviews, posts] = await Promise.all([
+    client.fetch(HOME_PAGE_QUERY).catch(() => null),
     client.fetch<Dog[]>(FEATURED_DOGS_QUERY).catch(() => []),
     client.fetch<Review[]>(FEATURED_REVIEWS_QUERY).catch(() => []),
     client.fetch<BlogPost[]>(BLOG_POSTS_QUERY + '[0...3]').catch(() => []),
   ])
 
+  // Fallbacks if homePage doc doesn't exist yet
+  const h = page || {}
+
   return (
     <>
       {/* ═══ HERO ═══ */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
-        {/* Background layers */}
         <div className="absolute inset-0 bg-brand-black" />
-        <div className="absolute inset-0 bg-[url('/hero-bg.jpg')] bg-cover bg-center opacity-30" />
+        {h.heroBackground?.asset?.url && (
+          <SanityImage
+            image={h.heroBackground}
+            fill
+            className="absolute inset-0"
+            priority
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-r from-brand-black via-brand-black/80 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-brand-black to-transparent" />
 
-        {/* Content */}
         <div className="relative z-10 page-section py-32">
           <div className="max-w-2xl">
-            <span className="section-label mb-4 animate-fade-in">Premium Breeding Program</span>
+            {h.heroLabel && (
+              <span className="section-label mb-4 animate-fade-in">{h.heroLabel}</span>
+            )}
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display text-white mb-2 leading-[0.95] animate-fade-in-up">
-              Crunchtime
+              {h.heroHeadingLine1 || 'Crunchtime'}
             </h1>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display text-gold mb-8 leading-[0.95] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-              Bullies
+              {h.heroHeadingLine2 || 'Bullies'}
             </h1>
-            <p className="text-white/50 text-lg md:text-xl font-body leading-relaxed mb-10 max-w-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
-              Premium American Bully breeding. Quality bloodlines,
-              health-tested puppies, and world-class breeding services.
-            </p>
+            {h.heroSubtext && (
+              <p className="text-white/50 text-lg md:text-xl font-body leading-relaxed mb-10 max-w-lg animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+                {h.heroSubtext}
+              </p>
+            )}
             <div className="flex flex-wrap gap-4 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-              <Link href="/dogs" className="btn-gold">View Our Dogs</Link>
-              <Link href="/contact" className="btn-gold-outline">Contact Us</Link>
+              <CTA cta={h.heroCta1} fallbackStyle="gold" />
+              <CTA cta={h.heroCta2} fallbackStyle="gold-outline" />
             </div>
           </div>
         </div>
 
-        {/* Scroll indicator */}
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-fade-in" style={{ animationDelay: '0.6s' }}>
           <span className="text-white/20 text-[10px] tracking-[0.3em] uppercase font-heading">Scroll</span>
           <div className="w-px h-8 bg-gradient-to-b from-gold/40 to-transparent" />
@@ -57,90 +77,90 @@ export default async function HomePage() {
       </section>
 
       {/* ═══ MARQUEE ═══ */}
-      <Marquee items={['Premium Puppies', 'Quality Bloodlines', 'Health Tested', 'ABKC Registered', 'Professional Breeding', 'Lifetime Support']} />
+      {h.marqueeItems?.length > 0 && (
+        <Marquee items={h.marqueeItems} />
+      )}
 
       {/* ═══ CATEGORY CARDS ═══ */}
-      <Section>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Link href="/dogs" className="group relative h-72 md:h-80 overflow-hidden block card">
-            <div className="absolute inset-0 bg-[url('/category-dogs.jpg')] bg-cover bg-center group-hover:scale-105 transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-            <div className="relative z-10 flex flex-col justify-end h-full p-8">
-              <span className="section-label">Browse</span>
-              <h2 className="text-white text-3xl font-display mb-2">American Bullies</h2>
-              <span className="text-gold text-xs tracking-[0.2em] uppercase font-heading flex items-center gap-2 group-hover:gap-3 transition-all">
-                View Available Dogs <ArrowRight size={14} />
-              </span>
-            </div>
-          </Link>
-
-          <Link href="/shop" className="group relative h-72 md:h-80 overflow-hidden block card">
-            <div className="absolute inset-0 bg-[url('/category-shop.jpg')] bg-cover bg-center group-hover:scale-105 transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-            <div className="relative z-10 flex flex-col justify-end h-full p-8">
-              <span className="section-label">Browse</span>
-              <h2 className="text-white text-3xl font-display mb-2">Dog Care Products</h2>
-              <span className="text-gold text-xs tracking-[0.2em] uppercase font-heading flex items-center gap-2 group-hover:gap-3 transition-all">
-                Shop Now <ArrowRight size={14} />
-              </span>
-            </div>
-          </Link>
-        </div>
-      </Section>
+      {h.categoryCards?.length > 0 && (
+        <Section>
+          <div className={`grid grid-cols-1 ${h.categoryCards.length >= 2 ? 'md:grid-cols-2' : ''} gap-6`}>
+            {h.categoryCards.map((card: any, i: number) => (
+              <Link key={i} href={card.href || '#'} className="group relative h-72 md:h-80 overflow-hidden block card">
+                {card.image?.asset?.url ? (
+                  <SanityImage image={card.image} fill className="absolute inset-0 group-hover:scale-105 transition-transform duration-700" />
+                ) : (
+                  <div className="absolute inset-0 bg-charcoal" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="relative z-10 flex flex-col justify-end h-full p-8">
+                  {card.label && <span className="section-label">{card.label}</span>}
+                  <h2 className="text-white text-3xl font-display mb-2">{card.heading}</h2>
+                  {card.linkText && (
+                    <span className="text-gold text-xs tracking-[0.2em] uppercase font-heading flex items-center gap-2 group-hover:gap-3 transition-all">
+                      {card.linkText} <ArrowRight size={14} />
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* ═══ ABOUT PREVIEW ═══ */}
       <Section
-        label="About Us"
-        heading="Puppies You Can Count On"
+        label={h.aboutLabel || 'About Us'}
+        heading={h.aboutHeading || 'Puppies You Can Count On'}
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <div className="relative aspect-[4/3] overflow-hidden">
-            <div className="absolute inset-0 bg-[url('/about-preview.jpg')] bg-cover bg-center" />
+            {h.aboutImage?.asset?.url ? (
+              <SanityImage image={h.aboutImage} fill className="absolute inset-0" />
+            ) : (
+              <div className="absolute inset-0 bg-charcoal" />
+            )}
             <div className="absolute inset-0 border border-gold/10" />
-            {/* Gold corner accents */}
             <div className="absolute top-0 left-0 w-16 h-16 border-t border-l border-gold/30" />
             <div className="absolute bottom-0 right-0 w-16 h-16 border-b border-r border-gold/30" />
           </div>
 
           <div>
-            <p className="text-white/50 font-body leading-relaxed mb-6">
-              At Crunchtime Bullies, we&apos;re dedicated to producing top-quality American Bullies
-              with exceptional structure, temperament, and health. Every puppy from our program
-              comes from carefully selected bloodlines and undergoes comprehensive health testing.
-            </p>
-            <p className="text-white/50 font-body leading-relaxed mb-8">
-              Our commitment extends beyond the sale — we provide lifetime support to every
-              family that welcomes a Crunchtime puppy into their home.
-            </p>
+            {h.aboutText ? (
+              h.aboutText.map((block: any, i: number) => (
+                <p key={i} className="text-white/50 font-body leading-relaxed mb-6">
+                  {block.children?.map((c: any) => c.text).join('')}
+                </p>
+              ))
+            ) : (
+              <>
+                <p className="text-white/50 font-body leading-relaxed mb-6">
+                  At Crunchtime Bullies, we&apos;re dedicated to producing top-quality American Bullies with exceptional structure, temperament, and health.
+                </p>
+                <p className="text-white/50 font-body leading-relaxed mb-8">
+                  Every puppy is raised with love, health-tested, and comes with a lifetime of breeder support. We don&apos;t just breed dogs — we build families.
+                </p>
+              </>
+            )}
 
-            {/* Trust Points */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-              <div className="flex items-start gap-3">
-                <Shield size={20} className="text-gold mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-white text-sm font-heading">Health Tested</p>
-                  <p className="text-white/30 text-xs font-body mt-1">DNA & OFA certified</p>
-                </div>
+            {h.aboutFeatures?.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                {h.aboutFeatures.map((feat: any, i: number) => {
+                  const Icon = iconMap[feat.icon] || Shield
+                  return (
+                    <div key={i} className="flex items-start gap-3">
+                      <Icon size={20} className="text-gold mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-white text-sm font-heading">{feat.title}</p>
+                        {feat.subtitle && <p className="text-white/30 text-xs font-body mt-1">{feat.subtitle}</p>}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
-              <div className="flex items-start gap-3">
-                <Award size={20} className="text-gold mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-white text-sm font-heading">Registered</p>
-                  <p className="text-white/30 text-xs font-body mt-1">ABKC & UKC papers</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Heart size={20} className="text-gold mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-white text-sm font-heading">Lifetime Support</p>
-                  <p className="text-white/30 text-xs font-body mt-1">We&apos;re always here</p>
-                </div>
-              </div>
-            </div>
+            )}
 
-            <Link href="/about" className="btn-gold-outline btn-sm">
-              Learn More About Us
-            </Link>
+            <CTA cta={h.aboutCta} fallbackStyle="gold-outline" />
           </div>
         </div>
       </Section>
@@ -149,42 +169,31 @@ export default async function HomePage() {
       {dogs.length > 0 && (
         <Section
           className="bg-brand-dark"
-          label="Our Dogs"
-          heading="Featured Bullies"
-          subheading="Meet some of our exceptional American Bullies — bred for structure, temperament, and health."
+          label={h.dogsLabel || 'Our Dogs'}
+          heading={h.dogsHeading || 'Featured Bullies'}
+          subheading={h.dogsSubheading}
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {dogs.map((dog, i) => (
-              <DogCard key={dog._id} dog={dog} index={i} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {dogs.map((dog) => (
+              <DogCard key={dog._id} dog={dog} />
             ))}
           </div>
-          <div className="text-center mt-12">
-            <Link href="/dogs" className="btn-gold-outline btn-sm">
-              View All Dogs
-            </Link>
+          <div className="text-center mt-10">
+            <Link href="/dogs" className="btn-gold-outline btn-sm">View All Dogs</Link>
           </div>
         </Section>
       )}
 
-      {/* ═══ MARQUEE 2 ═══ */}
-      <Marquee items={['Quality Breeds', 'Quality Fashion', 'Crunchtime Bullies', 'Premium Puppies', 'Lifestyle Apparel']} />
-
       {/* ═══ REVIEWS ═══ */}
       {reviews.length > 0 && (
         <Section
-          centered
-          label="Testimonials"
-          heading="What Our Clients Say"
+          label={h.reviewsLabel || 'Testimonials'}
+          heading={h.reviewsHeading || 'What Our Clients Say'}
         >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {reviews.map((review, i) => (
-              <ReviewCard key={review._id} review={review} index={i} />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {reviews.map((review) => (
+              <ReviewCard key={review._id} review={review} />
             ))}
-          </div>
-          <div className="text-center mt-12">
-            <Link href="/reviews" className="btn-gold-outline btn-sm">
-              Read All Reviews
-            </Link>
           </div>
         </Section>
       )}
@@ -193,63 +202,54 @@ export default async function HomePage() {
       {posts.length > 0 && (
         <Section
           className="bg-brand-dark"
-          label="Blog"
-          heading="Latest Updates"
+          label={h.blogLabel || 'From The Blog'}
+          heading={h.blogHeading || 'Latest Posts'}
         >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {posts.map((post) => (
-              <Link key={post._id} href={`/blog/${post.slug.current}`} className="group card card-hover">
-                <div className="relative aspect-video overflow-hidden bg-brand-charcoal">
-                  {post.mainImage && (
+              <Link key={post._id} href={`/blog/${post.slug}`} className="group card overflow-hidden">
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  {post.mainImage?.asset?.url ? (
                     <Image
-                      src={urlFor(post.mainImage).width(600).height(340).url()}
-                      alt={post.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700"
+                      src={post.mainImage.asset.url}
+                      alt={post.mainImage?.alt || post.title}
+                      fill className="object-cover group-hover:scale-105 transition-transform duration-700"
                     />
+                  ) : (
+                    <div className="absolute inset-0 bg-charcoal" />
                   )}
                 </div>
                 <div className="p-6">
-                  <p className="text-white/30 text-xs font-heading tracking-wider mb-2">
-                    {new Date(post.publishedAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </p>
-                  <h3 className="text-white text-lg font-heading group-hover:text-gold transition-colors">
-                    {post.title}
-                  </h3>
-                  {post.excerpt && (
-                    <p className="text-white/40 text-sm font-body mt-2 line-clamp-2">{post.excerpt}</p>
+                  {post.publishedAt && (
+                    <time className="text-gold/50 text-xs tracking-[0.15em] uppercase font-heading">
+                      {new Date(post.publishedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                    </time>
                   )}
+                  <h3 className="text-white font-display text-xl mt-2 group-hover:text-gold transition-colors">{post.title}</h3>
+                  {post.excerpt && <p className="text-white/40 font-body text-sm mt-2 line-clamp-2">{post.excerpt}</p>}
                 </div>
               </Link>
             ))}
           </div>
-          <div className="text-center mt-12">
-            <Link href="/blog" className="btn-gold-outline btn-sm">
-              View All Posts
-            </Link>
-          </div>
         </Section>
       )}
 
-      {/* ═══ CTA ═══ */}
-      <section className="relative py-24 md:py-32 overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/cta-bg.jpg')] bg-cover bg-center opacity-20" />
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-black via-brand-black/90 to-brand-black" />
+      {/* ═══ FINAL CTA ═══ */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-brand-black" />
+        {h.ctaBackground?.asset?.url && (
+          <SanityImage image={h.ctaBackground} fill className="absolute inset-0" />
+        )}
+        <div className="absolute inset-0 bg-brand-black/70" />
         <div className="relative z-10 page-section text-center">
-          <span className="section-label">Get in Touch</span>
-          <h2 className="section-heading mx-auto">
-            Ready to Welcome a<br />
-            <span className="text-gold">Crunchtime Puppy?</span>
+          <h2 className="text-4xl md:text-5xl font-display text-white mb-4">
+            {h.ctaHeading || 'Ready to Find Your Perfect Bully?'}
           </h2>
-          <p className="section-subheading mx-auto mb-10">
-            Contact us to learn about available puppies, upcoming litters,
-            and our breeding program.
-          </p>
-          <Link href="/contact" className="btn-gold">Contact Us Today</Link>
+          {h.ctaText && <p className="text-white/50 font-body text-lg max-w-xl mx-auto mb-8">{h.ctaText}</p>}
+          <div className="flex flex-wrap justify-center gap-4">
+            <CTA cta={h.ctaButton1} fallbackStyle="gold" />
+            <CTA cta={h.ctaButton2} fallbackStyle="gold-outline" />
+          </div>
         </div>
       </section>
     </>

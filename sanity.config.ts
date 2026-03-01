@@ -18,14 +18,17 @@ export default defineConfig({
           .title('Content')
           .items([
             S.listItem()
-              .title('Site Settings')
+              .title('⚙️ Site Settings')
               .child(S.document().schemaType('siteSettings').documentId('siteSettings')),
+            S.listItem()
+              .title('🏠 Home Page')
+              .child(S.document().schemaType('homePage').documentId('homePage')),
             S.divider(),
-            S.documentTypeListItem('dog').title('Dogs'),
-            S.documentTypeListItem('service').title('Services'),
+            S.documentTypeListItem('dog').title('🐕 Dogs'),
+            S.documentTypeListItem('service').title('🛠️ Services'),
             S.divider(),
-            S.documentTypeListItem('blogPost').title('Blog Posts'),
-            S.documentTypeListItem('review').title('Reviews'),
+            S.documentTypeListItem('blogPost').title('📝 Blog Posts'),
+            S.documentTypeListItem('review').title('⭐ Reviews'),
           ]),
     }),
     visionTool(),
