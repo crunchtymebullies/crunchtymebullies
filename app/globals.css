@@ -175,3 +175,114 @@
     animation: none;
   }
 }
+
+/* ═══ Scroll Reveal Animations ═══ */
+.reveal {
+  will-change: transform, opacity;
+}
+
+/* Fade Up - NexaVision style section reveal */
+.reveal-fade-up {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity var(--reveal-duration, 600ms) cubic-bezier(0.25, 0.4, 0.25, 1),
+              transform var(--reveal-duration, 600ms) cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+.reveal-fade-up.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fade In - simple opacity */
+.reveal-fade-in {
+  opacity: 0;
+  transition: opacity var(--reveal-duration, 500ms) ease-out;
+}
+.reveal-fade-in.revealed {
+  opacity: 1;
+}
+
+/* Fade Left */
+.reveal-fade-left {
+  opacity: 0;
+  transform: translateX(-40px);
+  transition: opacity var(--reveal-duration, 600ms) cubic-bezier(0.25, 0.4, 0.25, 1),
+              transform var(--reveal-duration, 600ms) cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+.reveal-fade-left.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Fade Right */
+.reveal-fade-right {
+  opacity: 0;
+  transform: translateX(40px);
+  transition: opacity var(--reveal-duration, 600ms) cubic-bezier(0.25, 0.4, 0.25, 1),
+              transform var(--reveal-duration, 600ms) cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+.reveal-fade-right.revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Scale Up - card entrance */
+.reveal-scale-up {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity var(--reveal-duration, 500ms) cubic-bezier(0.25, 0.4, 0.25, 1),
+              transform var(--reveal-duration, 500ms) cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+.reveal-scale-up.revealed {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Clip Up - dramatic curtain reveal */
+.reveal-clip-up {
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path var(--reveal-duration, 800ms) cubic-bezier(0.77, 0, 0.175, 1);
+}
+.reveal-clip-up.revealed {
+  clip-path: inset(0 0 0 0);
+}
+
+/* Stagger children - each child inherits its own transition-delay */
+.reveal > * {
+  transition: opacity inherit, transform inherit;
+}
+
+/* Gold line draw animation */
+.reveal-line {
+  width: 0;
+  transition: width 800ms cubic-bezier(0.25, 0.4, 0.25, 1);
+}
+.revealed .reveal-line,
+.reveal-line.revealed {
+  width: 4rem;
+}
+
+/* Counter/number count-up glow */
+@keyframes gold-glow-pulse {
+  0%, 100% { text-shadow: 0 0 10px rgba(208, 185, 112, 0); }
+  50% { text-shadow: 0 0 20px rgba(208, 185, 112, 0.4); }
+}
+.revealed .glow-number {
+  animation: gold-glow-pulse 2s ease-in-out;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .reveal-fade-up,
+  .reveal-fade-in,
+  .reveal-fade-left,
+  .reveal-fade-right,
+  .reveal-scale-up,
+  .reveal-clip-up {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+    transition: none !important;
+  }
+}
