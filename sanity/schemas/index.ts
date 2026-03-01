@@ -4,5 +4,6 @@ import review from './review'
 import service from './service'
 import siteSettings from './siteSettings'
 import homePage from './homePage'
+import submission from './submission'
 
-export const schemaTypes = [siteSettings, homePage, dog, blogPost, review, service]
+export const schemaTypes = [siteSettings, homePage, dog, blogPost, review, service, submission]
