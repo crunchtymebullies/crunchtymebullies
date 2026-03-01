@@ -1,7 +1,7 @@
 export default function Section({
-  children, className = '', label, heading, subheading, dark = false,
+  children, className = '', label, heading, subheading, dark = false, centered, ...rest
 }: {
-  children: React.ReactNode; className?: string; label?: string; heading?: string; subheading?: string; dark?: boolean;
+  children: React.ReactNode; className?: string; label?: string; heading?: string; subheading?: string; dark?: boolean; [key: string]: any;
 }) {
   return (
     <section className={`py-20 md:py-28 ${dark ? 'bg-brand-dark' : ''} ${className}`}>
