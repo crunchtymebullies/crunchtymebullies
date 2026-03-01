@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Camera, Dog, CreditCard, Store, Palette, Share2, FileText, Wrench, ChevronRight, CheckCircle2, Circle, Clock, Sparkles, Zap, BarChart3 } from 'lucide-react'
+import { Camera, Dog, CreditCard, Store, Palette, Share2, FileText, Wrench, ChevronRight, CheckCircle2, Circle, Clock, Sparkles, Zap, BarChart3, MessageSquare, X as XIcon } from 'lucide-react'
 
 const defaultItems = [
   { id: 'photos', title: 'Upload Dog Photos', description: 'Take clean, well-lit photos of each dog and upload them here.', href: '/go/photos', icon: Camera, priority: 'high', accentColor: 'emerald' },
@@ -19,6 +19,75 @@ const priorityConfig: Record<string, { label: string; color: string }> = {
   high: { label: 'PRIORITY', color: 'text-red-400 bg-red-500/10 border-red-500/20' },
   medium: { label: 'IMPORTANT', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
   low: { label: 'WHEN READY', color: 'text-white/40 bg-white/5 border-white/10' },
+}
+
+function DevContact() {
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [msg, setMsg] = useState('')
+  const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+
+  const send = async () => {
+    if (!msg.trim()) return
+    setSending(true)
+    try {
+      await fetch('/api/contact-dev', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, message: msg }) })
+      setSent(true)
+    } catch {}
+    setSending(false)
+  }
+
+  return (
+    <>
+      <div className="mt-12 p-6 bg-brand-dark/30 border border-white/5 rounded-xl text-center">
+        <Sparkles size={20} className="text-gold mx-auto mb-3" />
+        <p className="text-white/40 font-body text-sm mb-4">
+          Need help? Reach out to your development team at <a href="mailto:admin@nexavisiongroup.com" className="text-gold hover:underline">admin@nexavisiongroup.com</a>
+        </p>
+        <button onClick={() => { setOpen(true); setSent(false) }} className="btn-gold-outline text-sm inline-flex items-center gap-2">
+          <MessageSquare size={14} /> Send Message to Developer
+        </button>
+      </div>
+
+      {open && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+          <div className="relative bg-brand-dark border border-gold/20 rounded-2xl p-6 w-full max-w-md" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setOpen(false)} className="absolute top-4 right-4 text-white/20 hover:text-white/40"><XIcon size={18} /></button>
+
+            {sent ? (
+              <div className="text-center py-6">
+                <CheckCircle2 size={40} className="text-emerald-400 mx-auto mb-3" />
+                <h3 className="text-xl font-display text-white mb-2">Message Sent!</h3>
+                <p className="text-white/40 font-body text-sm">Your developer will get back to you soon.</p>
+                <button onClick={() => setOpen(false)} className="btn-gold-outline mt-6 text-sm">Close</button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center"><MessageSquare size={18} className="text-gold" /></div>
+                  <div>
+                    <h3 className="text-lg font-display text-white">Message Your Developer</h3>
+                    <p className="text-white/30 text-xs font-body">NexaVision Group</p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Your name"
+                    className="w-full bg-brand-black border border-white/10 rounded-lg px-4 py-3 text-white font-body focus:border-gold/40 focus:outline-none placeholder:text-white/15 text-sm" />
+                  <textarea value={msg} onChange={e => setMsg(e.target.value)} rows={4} placeholder="What do you need help with?"
+                    className="w-full bg-brand-black border border-white/10 rounded-lg px-4 py-3 text-white font-body focus:border-gold/40 focus:outline-none resize-none placeholder:text-white/15 text-sm" />
+                  <button onClick={send} disabled={sending || !msg.trim()} className="btn-gold w-full text-sm disabled:opacity-30 disabled:cursor-not-allowed">
+                    {sending ? 'Sending...' : 'Send Message'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
 }
 
 export default function GoDashboard() {
@@ -94,10 +163,7 @@ export default function GoDashboard() {
         )
       })}
 
-      <div className="mt-12 p-6 bg-brand-dark/30 border border-white/5 rounded-xl text-center">
-        <Sparkles size={20} className="text-gold mx-auto mb-3" />
-        <p className="text-white/40 font-body text-sm">Need help? Text your developer or email <a href="mailto:info@vigourcreative.com" className="text-gold hover:underline">info@vigourcreative.com</a></p>
-      </div>
+      <DevContact />
     </div>
   )
 }
