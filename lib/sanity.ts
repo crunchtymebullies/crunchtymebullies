@@ -113,3 +113,7 @@ export const SERVICES_QUERY = `*[_type == "service"] | order(order asc){
   _id, title, description, price, featured,
   image{ asset->{url}, alt }
 }`
+
+// Aliases for CLI compatibility
+export const DOGS_QUERY = ALL_DOGS_QUERY
+
