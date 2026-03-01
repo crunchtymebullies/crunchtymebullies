@@ -70,23 +70,26 @@ export const HOME_PAGE_QUERY = `*[_type == "homePage"][0]{
 }`
 
 export const FEATURED_DOGS_QUERY = `*[_type == "dog" && featured == true] | order(_createdAt desc) [0...6]{
-  _id, name, breed, gender, status, "slug": slug.current, price, weight,
+  _id, name, breed, variety, gender, status, "slug": slug.current, price, weight,
   mainImage{ asset->{url}, alt },
-  gallery[]{ asset->{url} }
+  gallery[]{ asset->{url} },
+  personality
 }`
 
 export const ALL_DOGS_QUERY = `*[_type == "dog"] | order(_createdAt desc){
-  _id, name, breed, gender, status, "slug": slug.current, price, weight, color, dob,
+  _id, name, breed, variety, gender, status, "slug": slug.current, price, weight, color, dob,
   mainImage{ asset->{url}, alt },
   gallery[]{ asset->{url} },
-  featured
+  personality, featured
 }`
 
 export const DOG_BY_SLUG_QUERY = `*[_type == "dog" && slug.current == $slug][0]{
-  _id, name, breed, gender, status, "slug": slug.current, price, weight, color, dob,
+  _id, name, breed, variety, gender, status, "slug": slug.current, price, weight, height, color, dob,
   mainImage{ asset->{url}, alt },
-  gallery[]{ asset->{url} },
-  description, sire, dam, registry, healthTests, featured
+  gallery[]{ asset->{url}, caption },
+  description, personality, sire, dam, bloodline, registry, registrationNumber, pedigreeUrl,
+  healthTests, healthNotes, featured,
+  documents[]{ title, docType, asset->{url, originalFilename, size} }
 }`
 
 export const FEATURED_REVIEWS_QUERY = `*[_type == "review" && featured == true] | order(date desc) [0...6]{

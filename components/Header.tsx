@@ -8,6 +8,7 @@ import { Menu, X, ShoppingBag } from 'lucide-react'
 const navItems = [
   { label: 'Home', href: '/' },
   { label: 'Dogs', href: '/dogs' },
+  { label: 'Services', href: '/services' },
   { label: 'Shop', href: '/shop' },
   { label: 'About', href: '/about' },
   { label: 'Reviews', href: '/reviews' },
@@ -46,7 +47,7 @@ export default function Header({ logoUrl, announcement }: { logoUrl?: string; an
               </div>
             )}
             <div className="hidden sm:block">
-              <p className="font-display text-white text-lg leading-none">Crunchtime</p>
+              <p className="font-display text-white text-lg leading-none">Crunchtyme</p>
               <p className="font-heading text-gold text-[10px] tracking-[0.35em] uppercase">Bullies</p>
             </div>
           </Link>
