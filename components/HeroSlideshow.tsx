@@ -3,37 +3,43 @@
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 
-// Each slide gets a unique Ken Burns direction
 const kenBurnsVariants = [
-  'animate-kb-zoom-in',       // slow zoom in from center
-  'animate-kb-drift-right',   // zoom + drift right
-  'animate-kb-drift-left',    // zoom + drift left  
-  'animate-kb-zoom-out',      // start zoomed, slowly pull out
-  'animate-kb-drift-up',      // zoom + drift upward
+  'kb-zoom-in',
+  'kb-drift-right',
+  'kb-drift-left',
+  'kb-zoom-out',
+  'kb-drift-up',
 ]
 
-export default function HeroSlideshow({ images }: { images: string[] }) {
+export default function HeroSlideshow({ 
+  images, 
+  slideDuration = 4, 
+  crossfadeDuration = 1,
+  kenBurnsDuration = 5,
+}: { 
+  images: string[]
+  slideDuration?: number
+  crossfadeDuration?: number
+  kenBurnsDuration?: number
+}) {
   const [current, setCurrent] = useState(0)
   const [previous, setPrevious] = useState(-1)
-  const [transitioning, setTransitioning] = useState(false)
+
+  const crossfadeMs = crossfadeDuration * 1000
+  const intervalMs = slideDuration * 1000
 
   const advance = useCallback(() => {
     if (images.length <= 1) return
     setPrevious(current)
-    setTransitioning(true)
     setCurrent((current + 1) % images.length)
-    // Reset transition state after crossfade completes
-    setTimeout(() => {
-      setPrevious(-1)
-      setTransitioning(false)
-    }, 2000)
-  }, [current, images.length])
+    setTimeout(() => setPrevious(-1), crossfadeMs)
+  }, [current, images.length, crossfadeMs])
 
   useEffect(() => {
     if (images.length <= 1) return
-    const timer = setInterval(advance, 7000) // 7s per slide
+    const timer = setInterval(advance, intervalMs)
     return () => clearInterval(timer)
-  }, [advance, images.length])
+  }, [advance, images.length, intervalMs])
 
   if (!images.length) return null
 
@@ -49,11 +55,13 @@ export default function HeroSlideshow({ images }: { images: string[] }) {
         return (
           <div
             key={`${url}-${i}`}
-            className={`absolute inset-0 transition-opacity duration-[2000ms] ease-in-out ${
-              isActive ? 'opacity-100 z-[2]' : 'opacity-0 z-[1]'
-            }`}
+            className={`absolute inset-0 ${isActive ? 'opacity-100 z-[2]' : 'opacity-0 z-[1]'}`}
+            style={{ transition: `opacity ${crossfadeMs}ms ease-in-out` }}
           >
-            <div className={`absolute inset-0 ${isActive ? variant : ''}`}>
+            <div
+              className="absolute inset-0"
+              style={isActive ? { animation: `${variant} ${kenBurnsDuration}s ease-out forwards` } : undefined}
+            >
               <Image
                 src={url}
                 alt=""
@@ -68,11 +76,9 @@ export default function HeroSlideshow({ images }: { images: string[] }) {
         )
       })}
 
-      {/* Vignette + gradient overlays for text readability */}
       <div className="absolute inset-0 z-[3] bg-gradient-to-r from-brand-black via-brand-black/70 to-brand-black/20" />
       <div className="absolute inset-0 z-[3] bg-gradient-to-t from-brand-black via-transparent to-brand-black/30" />
       
-      {/* Slide indicators */}
       {images.length > 1 && (
         <div className="absolute bottom-8 right-8 z-[5] flex gap-2">
           {images.map((_, i) => (
@@ -81,17 +87,14 @@ export default function HeroSlideshow({ images }: { images: string[] }) {
               onClick={() => {
                 if (i !== current) {
                   setPrevious(current)
-                  setTransitioning(true)
                   setCurrent(i)
-                  setTimeout(() => { setPrevious(-1); setTransitioning(false) }, 2000)
+                  setTimeout(() => setPrevious(-1), crossfadeMs)
                 }
               }}
               className={`w-2 h-2 rounded-full transition-all duration-500 ${
-                i === current
-                  ? 'bg-gold w-8'
-                  : 'bg-white/30 hover:bg-white/50'
+                i === current ? 'bg-gold w-8' : 'bg-white/30 hover:bg-white/50'
               }`}
-              aria-label={`Go to slide ${i + 1}`}
+              aria-label={`Slide ${i + 1}`}
             />
           ))}
         </div>

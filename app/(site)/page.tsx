@@ -37,15 +37,20 @@ export default async function HomePage() {
       {/* ═══ HERO ═══ */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-brand-black" />
-        <HeroSlideshow images={(() => {
-          const imgs: string[] = []
-          if (h.heroSlides?.length) {
-            h.heroSlides.forEach((s: any) => { if (s.asset?.url) imgs.push(s.asset.url) })
-          } else if (h.heroBackground?.asset?.url) {
-            imgs.push(h.heroBackground.asset.url)
-          }
-          return imgs
-        })()} />
+        <HeroSlideshow 
+          images={(() => {
+            const imgs: string[] = []
+            if (h.heroSlides?.length) {
+              h.heroSlides.forEach((s: any) => { if (s.asset?.url) imgs.push(s.asset.url) })
+            } else if (h.heroBackground?.asset?.url) {
+              imgs.push(h.heroBackground.asset.url)
+            }
+            return imgs
+          })()}
+          slideDuration={h.heroSlideDuration || 4}
+          crossfadeDuration={h.heroCrossfadeDuration || 1}
+          kenBurnsDuration={h.heroKenBurnsDuration || 5}
+        />
 
         <div className="relative z-10 page-section py-32">
           <div className="max-w-2xl">
@@ -78,7 +83,7 @@ export default async function HomePage() {
 
       {/* ═══ MARQUEE ═══ */}
       {h.marqueeItems?.length > 0 && (
-        <Marquee items={h.marqueeItems} />
+        <Marquee items={h.marqueeItems} speed={h.marqueeSpeed || 15} />
       )}
 
       {/* ═══ CATEGORY CARDS ═══ */}

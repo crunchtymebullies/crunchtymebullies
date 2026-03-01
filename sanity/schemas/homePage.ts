@@ -19,6 +19,24 @@ export default defineType({
     defineField({ name: 'heroSubtext', title: 'Hero Subtext', type: 'text', rows: 2, group: 'hero' }),
     defineField({ name: 'heroBackground', title: 'Hero Background (Single/Fallback)', type: 'image', group: 'hero', options: { hotspot: true }, description: 'Used if no slideshow images are set' }),
     defineField({ name: 'heroSlides', title: 'Hero Slideshow Images', type: 'array', group: 'hero', of: [{ type: 'image', options: { hotspot: true } }], description: 'Add multiple images for an animated Ken Burns slideshow. Works with any aspect ratio (16:9, portrait, square). Recommended: 3-5 images.' }),
+    defineField({ 
+      name: 'heroSlideDuration', title: 'Slide Duration (seconds)', type: 'number', group: 'hero',
+      description: 'How long each slide stays visible. Default: 4s. Lower = faster.',
+      initialValue: 4,
+      validation: r => r.min(1).max(30),
+    }),
+    defineField({ 
+      name: 'heroCrossfadeDuration', title: 'Crossfade Speed (seconds)', type: 'number', group: 'hero',
+      description: 'How long the fade transition takes. Default: 1s. Lower = snappier.',
+      initialValue: 1,
+      validation: r => r.min(0.3).max(5),
+    }),
+    defineField({ 
+      name: 'heroKenBurnsDuration', title: 'Ken Burns Zoom Speed (seconds)', type: 'number', group: 'hero',
+      description: 'How long the zoom/pan animation takes. Default: 5s. Lower = faster zoom.',
+      initialValue: 5,
+      validation: r => r.min(2).max(20),
+    }),
     defineField({ name: 'heroCta1', title: 'Hero CTA 1', type: 'object', group: 'hero', fields: [
       defineField({ name: 'text', type: 'string', title: 'Text' }),
       defineField({ name: 'href', type: 'string', title: 'Link' }),
@@ -31,6 +49,12 @@ export default defineType({
     ]}),
     // Marquee
     defineField({ name: 'marqueeItems', title: 'Marquee Items', type: 'array', of: [{ type: 'string' }] }),
+    defineField({ 
+      name: 'marqueeSpeed', title: 'Marquee Scroll Speed (seconds)', type: 'number',
+      description: 'How long for one full scroll cycle. Default: 15s. Lower = faster scroll.',
+      initialValue: 15,
+      validation: r => r.min(3).max(60),
+    }),
     // Category Cards
     defineField({ name: 'categoryCards', title: 'Category Cards', type: 'array', group: 'categories', of: [{
       type: 'object',

@@ -56,7 +56,7 @@ const config: Config = {
         },
       },
       animation: {
-        'marquee': 'marquee 30s linear infinite',
+        'marquee': 'marquee 15s linear infinite',
         'fade-in-up': 'fade-in-up 0.8s ease-out forwards',
         'fade-in': 'fade-in 0.6s ease-out forwards',
         'slide-in-right': 'slide-in-right 0.8s ease-out forwards',
