@@ -1,74 +1,31 @@
-'use client'
-
 import Link from 'next/link'
 import Image from 'next/image'
-import { motion } from 'framer-motion'
-import { urlFor } from '@/lib/sanity'
 import type { Dog } from '@/lib/types'
 
-const statusColors: Record<string, string> = {
-  available: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  reserved: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  sold: 'bg-red-500/20 text-red-400 border-red-500/30',
-  stud: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+const statusColor: Record<string, string> = {
+  available: 'bg-emerald-500/20 text-emerald-400',
+  sold: 'bg-red-500/20 text-red-400',
+  reserved: 'bg-amber-500/20 text-amber-400',
+  stud: 'bg-blue-500/20 text-blue-400',
 }
 
-export default function DogCard({ dog, index = 0 }: { dog: Dog; index?: number }) {
+export default function DogCard({ dog }: { dog: Dog }) {
+  const imgUrl = dog.mainImage?.asset?.url
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
-      transition={{ delay: index * 0.1, duration: 0.5 }}
-    >
-      <Link href={`/dogs/${dog.slug}`} className="group block card card-hover">
-        {/* Image */}
-        <div className="relative aspect-square overflow-hidden bg-brand-charcoal">
-          {dog.mainImage && (
-            <Image
-              src={urlFor(dog.mainImage).width(600).height(600).url()}
-              alt={dog.name}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-700"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-          
-          {/* Status Badge */}
-          <div className="absolute top-4 left-4">
-            <span className={`text-[10px] tracking-[0.2em] uppercase font-heading px-3 py-1 border ${statusColors[dog.status] || statusColors.available}`}>
-              {dog.status}
-            </span>
-          </div>
+    <Link href={`/dogs/${dog.slug}`} className="group block">
+      <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-brand-dark border border-white/5 hover:border-gold/30 transition-all duration-500">
+        {imgUrl ? (
+          <Image src={imgUrl} alt={dog.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 768px) 100vw, 33vw" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center"><span className="text-white/20 text-6xl font-display">{dog.name[0]}</span></div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 p-6">
+          {dog.status && <span className={`inline-block px-3 py-1 rounded-full text-[10px] uppercase tracking-wider mb-3 ${statusColor[dog.status] || 'bg-white/10 text-white/60'}`}>{dog.status}</span>}
+          <h3 className="font-display text-white text-2xl">{dog.name}</h3>
+          {dog.breed && <p className="text-gold/60 text-sm font-heading tracking-wider uppercase mt-1">{dog.breed}</p>}
         </div>
-
-        {/* Info */}
-        <div className="p-5">
-          <h3 className="text-white text-lg font-heading tracking-wide group-hover:text-gold transition-colors">
-            {dog.name}
-          </h3>
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-white/40 text-xs font-body">{dog.breed}</span>
-            {dog.gender && (
-              <>
-                <span className="text-white/10">·</span>
-                <span className="text-white/40 text-xs font-body capitalize">{dog.gender}</span>
-              </>
-            )}
-            {dog.color && (
-              <>
-                <span className="text-white/10">·</span>
-                <span className="text-white/40 text-xs font-body">{dog.color}</span>
-              </>
-            )}
-          </div>
-          {dog.price && dog.status === 'available' && (
-            <p className="text-gold font-heading text-sm mt-3 tracking-wide">
-              ${dog.price.toLocaleString()}
-            </p>
-          )}
-        </div>
-      </Link>
-    </motion.div>
+      </div>
+    </Link>
   )
 }
