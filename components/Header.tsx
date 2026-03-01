@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Menu, X, ShoppingBag, User } from 'lucide-react'
+import Image from 'next/image'
+import { Menu, X, ShoppingBag } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { client, SITE_SETTINGS_QUERY } from '@/lib/sanity'
 
 const navItems = [
   { label: 'Home', href: '/' },
   { label: 'Dogs', href: '/dogs' },
   { label: 'Shop', href: '/shop' },
+  { label: 'About', href: '/about' },
   { label: 'Reviews', href: '/reviews' },
   { label: 'Blog', href: '/blog' },
   { label: 'Contact', href: '/contact' },
@@ -17,6 +20,7 @@ const navItems = [
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [settings, setSettings] = useState<any>(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -24,14 +28,23 @@ export default function Header() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    client.fetch(SITE_SETTINGS_QUERY).then(setSettings).catch(() => {})
+  }, [])
+
+  const logoUrl = settings?.logo?.asset?.url
+  const announcement = settings?.announcement
+
   return (
     <>
       {/* Announcement Bar */}
-      <div className="bg-gradient-to-r from-gold-dark via-gold to-gold-dark py-2 text-center">
-        <Link href="/shop" className="text-brand-black text-xs tracking-[0.2em] uppercase font-heading font-semibold hover:underline">
-          Free Shipping on Orders Over $40 — Shop Now
-        </Link>
-      </div>
+      {announcement?.active !== false && (
+        <div className="bg-gradient-to-r from-gold-dark via-gold to-gold-dark py-2 text-center">
+          <Link href={announcement?.link || '/shop'} className="text-brand-black text-xs tracking-[0.2em] uppercase font-heading font-semibold hover:underline">
+            {announcement?.text || 'Free Shipping on Orders Over $40'} — Shop Now
+          </Link>
+        </div>
+      )}
 
       {/* Main Header */}
       <header
@@ -44,11 +57,19 @@ export default function Header() {
         <div className="max-w-site mx-auto px-4 md:px-8 flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative">
+            {logoUrl ? (
+              <Image
+                src={logoUrl}
+                alt="Crunchtime Bullies"
+                width={60}
+                height={60}
+                className="rounded-full group-hover:scale-105 transition-transform duration-300"
+              />
+            ) : (
               <div className="w-14 h-14 rounded-full border border-gold/40 flex items-center justify-center group-hover:border-gold transition-colors duration-300">
                 <span className="font-display text-gold text-xl">CT</span>
               </div>
-            </div>
+            )}
             <div className="hidden sm:block">
               <p className="font-display text-white text-lg leading-none">Crunchtime</p>
               <p className="font-heading text-gold text-[10px] tracking-[0.35em] uppercase">Bullies</p>
@@ -61,28 +82,24 @@ export default function Header() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-white/70 text-sm font-heading tracking-[0.15em] uppercase
-                           hover:text-gold transition-colors duration-300 relative group"
+                className="text-white/60 hover:text-gold text-xs tracking-[0.15em] uppercase font-heading transition-colors duration-300"
               >
                 {item.label}
-                <span className="absolute -bottom-1 left-0 w-0 h-px bg-gold group-hover:w-full transition-all duration-300" />
               </Link>
             ))}
           </nav>
 
-          {/* Right Icons */}
+          {/* Right side */}
           <div className="flex items-center gap-4">
-            <Link href="/account" className="text-white/50 hover:text-gold transition-colors hidden sm:block">
-              <User size={20} strokeWidth={1.5} />
-            </Link>
-            <Link href="/cart" className="text-white/50 hover:text-gold transition-colors relative">
-              <ShoppingBag size={20} strokeWidth={1.5} />
+            <Link href="/shop" className="text-white/60 hover:text-gold transition-colors">
+              <ShoppingBag size={20} />
             </Link>
             <button
-              onClick={() => setMenuOpen(true)}
-              className="text-white/70 hover:text-gold transition-colors lg:hidden"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="lg:hidden text-white/60 hover:text-gold transition-colors"
+              aria-label="Toggle menu"
             >
-              <Menu size={24} strokeWidth={1.5} />
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
@@ -95,40 +112,40 @@ export default function Header() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-brand-black/98 backdrop-blur-xl"
+            className="fixed inset-0 z-40 bg-brand-black/98 backdrop-blur-xl flex flex-col items-center justify-center"
           >
-            <div className="flex flex-col h-full">
-              <div className="flex items-center justify-between px-6 h-20">
-                <span className="font-display text-gold text-xl">Crunchtime Bullies</span>
-                <button onClick={() => setMenuOpen(false)} className="text-white/70 hover:text-gold">
-                  <X size={28} strokeWidth={1.5} />
-                </button>
-              </div>
-              <nav className="flex-1 flex flex-col justify-center px-12 gap-2">
-                {navItems.map((item, i) => (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.08 }}
+            <nav className="flex flex-col items-center gap-6">
+              {navItems.map((item, i) => (
+                <motion.div
+                  key={item.href}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                >
+                  <Link
+                    href={item.href}
+                    onClick={() => setMenuOpen(false)}
+                    className="text-white text-2xl font-display hover:text-gold transition-colors"
                   >
-                    <Link
-                      href={item.href}
-                      onClick={() => setMenuOpen(false)}
-                      className="block py-3 text-white text-3xl font-heading tracking-wide hover:text-gold transition-colors"
-                    >
-                      {item.label}
-                    </Link>
-                  </motion.div>
-                ))}
-              </nav>
-              <div className="px-12 pb-12">
-                <div className="gold-line mb-6" />
-                <p className="text-white/30 text-xs font-heading tracking-[0.2em] uppercase">
-                  Premium Puppies & Lifestyle Apparel
-                </p>
-              </div>
-            </div>
+                    {item.label}
+                  </Link>
+                </motion.div>
+              ))}
+            </nav>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="mt-12"
+            >
+              <Link
+                href="/contact"
+                onClick={() => setMenuOpen(false)}
+                className="btn-gold"
+              >
+                Get In Touch
+              </Link>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

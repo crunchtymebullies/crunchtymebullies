@@ -1,146 +1,88 @@
 import { defineField, defineType } from 'sanity'
 
-const imageWithSettings = (name: string, title: string, group?: string) =>
-  defineField({
-    name, title, type: 'image', group,
-    options: { hotspot: true },
-    fields: [
-      defineField({ name: 'alt', title: 'Alt Text', type: 'string' }),
-      defineField({
-        name: 'fit', title: 'Object Fit', type: 'string',
-        options: { list: ['cover', 'contain', 'fill', 'none', 'scale-down'] },
-        initialValue: 'cover',
-      }),
-      defineField({
-        name: 'position', title: 'Object Position', type: 'string',
-        options: { list: ['center', 'top', 'bottom', 'left', 'right', 'top left', 'top right', 'bottom left', 'bottom right'] },
-        initialValue: 'center',
-      }),
-      defineField({ name: 'opacity', title: 'Overlay Opacity (0-100)', type: 'number', initialValue: 30 }),
-    ],
-  })
-
-const ctaButton = (name: string, title: string) =>
-  defineField({
-    name, title, type: 'object',
-    fields: [
-      defineField({ name: 'text', title: 'Button Text', type: 'string' }),
-      defineField({ name: 'href', title: 'Link URL', type: 'string' }),
-      defineField({
-        name: 'style', title: 'Style', type: 'string',
-        options: { list: ['gold', 'gold-outline', 'white', 'white-outline'] },
-        initialValue: 'gold',
-      }),
-    ],
-  })
-
 export default defineType({
   name: 'homePage',
   title: 'Home Page',
   type: 'document',
   groups: [
-    { name: 'hero', title: '🦸 Hero Section' },
-    { name: 'marquee', title: '📢 Marquee' },
-    { name: 'categories', title: '🗂️ Category Cards' },
-    { name: 'about', title: '📖 About Preview' },
-    { name: 'dogs', title: '🐕 Featured Dogs' },
-    { name: 'reviews', title: '⭐ Reviews' },
-    { name: 'blog', title: '📝 Blog Preview' },
-    { name: 'cta', title: '📣 Final CTA' },
+    { name: 'hero', title: 'Hero Section' },
+    { name: 'categories', title: 'Category Cards' },
+    { name: 'about', title: 'About Section' },
+    { name: 'sections', title: 'Section Headings' },
+    { name: 'cta', title: 'CTA Section' },
   ],
   fields: [
-    defineField({ name: 'title', title: 'Page Title (internal)', type: 'string', initialValue: 'Home Page' }),
-
-    // ═══ HERO ═══
+    // Hero
     defineField({ name: 'heroLabel', title: 'Hero Label', type: 'string', group: 'hero', initialValue: 'Premium Breeding Program' }),
     defineField({ name: 'heroHeadingLine1', title: 'Hero Heading Line 1', type: 'string', group: 'hero', initialValue: 'Crunchtime' }),
-    defineField({ name: 'heroHeadingLine2', title: 'Hero Heading Line 2 (gold)', type: 'string', group: 'hero', initialValue: 'Bullies' }),
-    defineField({ name: 'heroSubtext', title: 'Hero Subtext', type: 'text', rows: 3, group: 'hero', initialValue: 'Premium American Bully breeding. Quality bloodlines, health-tested puppies, and world-class breeding services.' }),
-    imageWithSettings('heroBackground', 'Hero Background Image', 'hero'),
-    ctaButton('heroCta1', 'Hero Button 1 (Primary)'),
-    ctaButton('heroCta2', 'Hero Button 2 (Secondary)'),
-
-    // ═══ MARQUEE ═══
-    defineField({
-      name: 'marqueeItems', title: 'Marquee Scroll Items', type: 'array', group: 'marquee',
-      of: [{ type: 'string' }],
-      initialValue: ['Premium Puppies', 'Quality Bloodlines', 'Health Tested', 'ABKC Registered', 'Professional Breeding', 'Lifetime Support'],
-    }),
-
-    // ═══ CATEGORY CARDS ═══
-    defineField({
-      name: 'categoryCards', title: 'Category Cards', type: 'array', group: 'categories',
-      of: [{
-        type: 'object',
-        fields: [
-          defineField({ name: 'label', title: 'Top Label', type: 'string', initialValue: 'Browse' }),
-          defineField({ name: 'heading', title: 'Heading', type: 'string' }),
-          defineField({ name: 'linkText', title: 'Link Text', type: 'string' }),
-          defineField({ name: 'href', title: 'Link URL', type: 'string' }),
-          defineField({
-            name: 'image', title: 'Background Image', type: 'image',
-            options: { hotspot: true },
-            fields: [
-              defineField({ name: 'alt', title: 'Alt Text', type: 'string' }),
-              defineField({
-                name: 'fit', title: 'Object Fit', type: 'string',
-                options: { list: ['cover', 'contain', 'fill'] },
-                initialValue: 'cover',
-              }),
-              defineField({
-                name: 'position', title: 'Object Position', type: 'string',
-                options: { list: ['center', 'top', 'bottom', 'left', 'right'] },
-                initialValue: 'center',
-              }),
-            ],
-          }),
-        ],
-        preview: {
-          select: { title: 'heading', media: 'image' },
-        },
-      }],
-    }),
-
-    // ═══ ABOUT PREVIEW ═══
-    defineField({ name: 'aboutLabel', title: 'Section Label', type: 'string', group: 'about', initialValue: 'About Us' }),
-    defineField({ name: 'aboutHeading', title: 'Section Heading', type: 'string', group: 'about', initialValue: 'Puppies You Can Count On' }),
-    defineField({ name: 'aboutText', title: 'About Text', type: 'array', of: [{ type: 'block' }], group: 'about' }),
-    imageWithSettings('aboutImage', 'About Section Image', 'about'),
-    defineField({
-      name: 'aboutFeatures', title: 'Feature Pills', type: 'array', group: 'about',
-      of: [{
-        type: 'object',
-        fields: [
-          defineField({ name: 'icon', title: 'Icon Name', type: 'string', description: 'e.g. Shield, Award, Heart, Star, Check' }),
-          defineField({ name: 'title', title: 'Title', type: 'string' }),
-          defineField({ name: 'subtitle', title: 'Subtitle', type: 'string' }),
-        ],
-        preview: { select: { title: 'title', subtitle: 'subtitle' } },
-      }],
-    }),
-    ctaButton('aboutCta', 'About CTA Button'),
-
-    // ═══ FEATURED DOGS ═══
-    defineField({ name: 'dogsLabel', title: 'Section Label', type: 'string', group: 'dogs', initialValue: 'Our Dogs' }),
-    defineField({ name: 'dogsHeading', title: 'Section Heading', type: 'string', group: 'dogs', initialValue: 'Featured Bullies' }),
-    defineField({ name: 'dogsSubheading', title: 'Section Subheading', type: 'text', rows: 2, group: 'dogs' }),
-
-    // ═══ REVIEWS ═══
-    defineField({ name: 'reviewsLabel', title: 'Section Label', type: 'string', group: 'reviews', initialValue: 'Testimonials' }),
-    defineField({ name: 'reviewsHeading', title: 'Section Heading', type: 'string', group: 'reviews', initialValue: 'What Our Clients Say' }),
-
-    // ═══ BLOG PREVIEW ═══
-    defineField({ name: 'blogLabel', title: 'Section Label', type: 'string', group: 'blog', initialValue: 'From The Blog' }),
-    defineField({ name: 'blogHeading', title: 'Section Heading', type: 'string', group: 'blog', initialValue: 'Latest Posts' }),
-
-    // ═══ FINAL CTA ═══
-    defineField({ name: 'ctaHeading', title: 'CTA Heading', type: 'string', group: 'cta', initialValue: 'Ready to Find Your Perfect Bully?' }),
+    defineField({ name: 'heroHeadingLine2', title: 'Hero Heading Line 2', type: 'string', group: 'hero', initialValue: 'Bullies' }),
+    defineField({ name: 'heroSubtext', title: 'Hero Subtext', type: 'text', rows: 2, group: 'hero' }),
+    defineField({ name: 'heroBackground', title: 'Hero Background Image', type: 'image', group: 'hero', options: { hotspot: true } }),
+    defineField({ name: 'heroCta1', title: 'Hero CTA 1', type: 'object', group: 'hero', fields: [
+      defineField({ name: 'text', type: 'string', title: 'Text' }),
+      defineField({ name: 'href', type: 'string', title: 'Link' }),
+      defineField({ name: 'style', type: 'string', title: 'Style', options: { list: ['gold', 'gold-outline', 'white'] } }),
+    ]}),
+    defineField({ name: 'heroCta2', title: 'Hero CTA 2', type: 'object', group: 'hero', fields: [
+      defineField({ name: 'text', type: 'string', title: 'Text' }),
+      defineField({ name: 'href', type: 'string', title: 'Link' }),
+      defineField({ name: 'style', type: 'string', title: 'Style', options: { list: ['gold', 'gold-outline', 'white'] } }),
+    ]}),
+    // Marquee
+    defineField({ name: 'marqueeItems', title: 'Marquee Items', type: 'array', of: [{ type: 'string' }] }),
+    // Category Cards
+    defineField({ name: 'categoryCards', title: 'Category Cards', type: 'array', group: 'categories', of: [{
+      type: 'object',
+      fields: [
+        defineField({ name: 'label', type: 'string', title: 'Label' }),
+        defineField({ name: 'heading', type: 'string', title: 'Heading' }),
+        defineField({ name: 'linkText', type: 'string', title: 'Link Text' }),
+        defineField({ name: 'href', type: 'string', title: 'Link URL' }),
+        defineField({ name: 'image', type: 'image', title: 'Background Image', options: { hotspot: true } }),
+      ],
+      preview: { select: { title: 'heading', subtitle: 'href' } },
+    }]}),
+    // About
+    defineField({ name: 'aboutLabel', title: 'About Label', type: 'string', group: 'about' }),
+    defineField({ name: 'aboutHeading', title: 'About Heading', type: 'string', group: 'about' }),
+    defineField({ name: 'aboutText', title: 'About Text', type: 'text', rows: 4, group: 'about' }),
+    defineField({ name: 'aboutImage', title: 'About Image', type: 'image', group: 'about', options: { hotspot: true } }),
+    defineField({ name: 'aboutFeatures', title: 'About Features', type: 'array', group: 'about', of: [{
+      type: 'object',
+      fields: [
+        defineField({ name: 'icon', type: 'string', title: 'Icon', options: { list: ['Shield', 'Heart', 'Award', 'Star', 'Check'] } }),
+        defineField({ name: 'title', type: 'string', title: 'Title' }),
+        defineField({ name: 'subtitle', type: 'string', title: 'Subtitle' }),
+      ],
+      preview: { select: { title: 'title' } },
+    }]}),
+    defineField({ name: 'aboutCta', title: 'About CTA', type: 'object', group: 'about', fields: [
+      defineField({ name: 'text', type: 'string', title: 'Text' }),
+      defineField({ name: 'href', type: 'string', title: 'Link' }),
+      defineField({ name: 'style', type: 'string', title: 'Style', options: { list: ['gold', 'gold-outline', 'white'] } }),
+    ]}),
+    // Section headings
+    defineField({ name: 'dogsLabel', title: 'Dogs Section Label', type: 'string', group: 'sections' }),
+    defineField({ name: 'dogsHeading', title: 'Dogs Section Heading', type: 'string', group: 'sections' }),
+    defineField({ name: 'dogsSubheading', title: 'Dogs Section Subheading', type: 'string', group: 'sections' }),
+    defineField({ name: 'reviewsLabel', title: 'Reviews Section Label', type: 'string', group: 'sections' }),
+    defineField({ name: 'reviewsHeading', title: 'Reviews Section Heading', type: 'string', group: 'sections' }),
+    defineField({ name: 'blogLabel', title: 'Blog Section Label', type: 'string', group: 'sections' }),
+    defineField({ name: 'blogHeading', title: 'Blog Section Heading', type: 'string', group: 'sections' }),
+    // CTA
+    defineField({ name: 'ctaHeading', title: 'CTA Heading', type: 'string', group: 'cta' }),
     defineField({ name: 'ctaText', title: 'CTA Text', type: 'text', rows: 2, group: 'cta' }),
-    imageWithSettings('ctaBackground', 'CTA Background Image', 'cta'),
-    ctaButton('ctaButton1', 'CTA Button 1'),
-    ctaButton('ctaButton2', 'CTA Button 2'),
+    defineField({ name: 'ctaBackground', title: 'CTA Background', type: 'image', group: 'cta', options: { hotspot: true } }),
+    defineField({ name: 'ctaButton1', title: 'CTA Button 1', type: 'object', group: 'cta', fields: [
+      defineField({ name: 'text', type: 'string', title: 'Text' }),
+      defineField({ name: 'href', type: 'string', title: 'Link' }),
+      defineField({ name: 'style', type: 'string', title: 'Style', options: { list: ['gold', 'gold-outline', 'white'] } }),
+    ]}),
+    defineField({ name: 'ctaButton2', title: 'CTA Button 2', type: 'object', group: 'cta', fields: [
+      defineField({ name: 'text', type: 'string', title: 'Text' }),
+      defineField({ name: 'href', type: 'string', title: 'Link' }),
+      defineField({ name: 'style', type: 'string', title: 'Style', options: { list: ['gold', 'gold-outline', 'white'] } }),
+    ]}),
   ],
-  preview: {
-    prepare: () => ({ title: 'Home Page' }),
-  },
+  preview: { prepare: () => ({ title: 'Home Page' }) },
 })
