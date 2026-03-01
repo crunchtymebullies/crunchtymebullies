@@ -1,6 +1,7 @@
 import { client, DOGS_QUERY } from '@/lib/sanity'
 import DogCard from '@/components/DogCard'
 import Section from '@/components/Section'
+import Reveal from '@/components/Reveal'
 import type { Dog } from '@/lib/types'
 import type { Metadata } from 'next'
 
@@ -11,6 +12,29 @@ export const metadata: Metadata = {
 
 export const revalidate = 60
 
+function DogGrid({ dogs, label }: { dogs: Dog[]; label?: string }) {
+  if (!dogs.length) return null
+  return (
+    <div className="mb-16 last:mb-0">
+      {label && (
+        <Reveal animation="fade-up">
+          <h2 className="text-2xl font-display text-gold mb-8 flex items-center gap-3">
+            <span className="w-2 h-2 rounded-full bg-gold" />
+            {label}
+          </h2>
+        </Reveal>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {dogs.map((dog, i) => (
+          <Reveal key={dog._id} animation="scale-up" delay={i * 100}>
+            <DogCard dog={dog} />
+          </Reveal>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default async function DogsPage() {
   const dogs = await client.fetch<Dog[]>(DOGS_QUERY).catch(() => [])
 
@@ -20,60 +44,36 @@ export default async function DogsPage() {
 
   return (
     <>
-      {/* Banner */}
       <div className="page-banner">
-        <div className="absolute inset-0 bg-[url('/dogs-banner.jpg')] bg-cover bg-center opacity-15" />
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-black/50 to-brand-black" />
+        <div className="absolute inset-0 bg-gradient-to-b from-brand-dark to-brand-black" />
         <div className="page-section text-center relative z-10">
-          <span className="section-label">Our Program</span>
-          <h1 className="page-banner-title">Our Dogs</h1>
-          <p className="section-subheading mx-auto mt-4">
-            Premium American Bullies bred for structure, temperament, and health.
-          </p>
+          <Reveal animation="fade-in">
+            <span className="section-label">Our Program</span>
+          </Reveal>
+          <Reveal animation="fade-up" delay={100}>
+            <h1 className="page-banner-title">Our Dogs</h1>
+          </Reveal>
+          <Reveal animation="fade-up" delay={200}>
+            <p className="section-subheading mx-auto mt-4">
+              Meet the foundation of our breeding program. Each dog is health-tested, ABKC registered, and raised with care.
+            </p>
+          </Reveal>
         </div>
       </div>
 
-      {/* Available Dogs */}
-      {available.length > 0 && (
-        <Section label="Available Now" heading="Available Puppies & Dogs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {available.map((dog, i) => (
-              <DogCard key={dog._id} dog={dog} index={i} />
-            ))}
-          </div>
-        </Section>
-      )}
+      <Section>
+        <DogGrid dogs={available} label="Available" />
+        <DogGrid dogs={studs} label="Studs" />
+        <DogGrid dogs={others} label="Our Pack" />
 
-      {/* Stud Services */}
-      {studs.length > 0 && (
-        <Section className="bg-brand-dark" label="Stud Services" heading="Our Studs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {studs.map((dog, i) => (
-              <DogCard key={dog._id} dog={dog} index={i} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Previously Available */}
-      {others.length > 0 && (
-        <Section label="Alumni" heading="Our Family">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {others.map((dog, i) => (
-              <DogCard key={dog._id} dog={dog} index={i} />
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* Empty State */}
-      {dogs.length === 0 && (
-        <Section centered heading="Coming Soon">
-          <p className="section-subheading mx-auto">
-            Our dog profiles are being updated. Check back soon or contact us directly for information about available puppies.
-          </p>
-        </Section>
-      )}
+        {dogs.length === 0 && (
+          <Reveal animation="fade-up">
+            <div className="text-center py-20">
+              <p className="text-white/30 font-body text-lg">No dogs to display yet. Check back soon!</p>
+            </div>
+          </Reveal>
+        )}
+      </Section>
     </>
   )
 }

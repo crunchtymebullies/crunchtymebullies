@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Shield, Award, Heart, ArrowLeft, Calendar, Weight, Dna } from 'lucide-react'
 import type { Dog } from '@/lib/types'
+import Reveal from '@/components/Reveal'
 import type { Metadata } from 'next'
 
 export const revalidate = 60
@@ -55,6 +56,7 @@ export default async function DogProfilePage({ params }: { params: { slug: strin
       <div className="page-section py-12 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           {/* Gallery */}
+          <Reveal animation="clip-up" duration={900}>
           <DogGallery images={allImages} />
 
           {/* Details */}
@@ -77,7 +79,9 @@ export default async function DogProfilePage({ params }: { params: { slug: strin
             <div className="gold-line mb-8" />
 
             {/* Quick Info */}
-            <div className="grid grid-cols-2 gap-4 mb-8">
+            </Reveal>
+          <Reveal animation="fade-up" delay={300}>
+          <div className="grid grid-cols-2 gap-4 mb-8">
               {dog.dob && (
                 <div className="flex items-center gap-3 p-3 bg-brand-dark border border-white/5">
                   <Calendar size={16} className="text-gold" />
