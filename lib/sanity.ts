@@ -117,3 +117,7 @@ export const SERVICES_QUERY = `*[_type == "service"] | order(order asc){
 // Aliases for CLI compatibility
 export const DOGS_QUERY = ALL_DOGS_QUERY
 export const REVIEWS_QUERY = ALL_REVIEWS_QUERY
+
+// Aliases for CLI-generated pages
+export const DOGS_QUERY = ALL_DOGS_QUERY
+
