@@ -151,10 +151,10 @@ export default async function HomePage() {
               ) : (
                 <>
                   <p className="text-white/50 font-body leading-relaxed mb-6">
-                    At Crunchtime Bullies, we&apos;re dedicated to producing top-quality American Bullies with exceptional structure, temperament, and health.
+                    We produce exceptional family companions built on superior health, stable temperaments, and honest pricing. Every puppy is indoor-raised with daily socialization from day one.
                   </p>
                   <p className="text-white/50 font-body leading-relaxed mb-8">
-                    Every puppy is raised with love, health-tested, and comes with a lifetime of breeder support. We don&apos;t just breed dogs — we build families.
+                    Owning a high-quality, ethically bred dog shouldn&apos;t be a luxury. We&apos;re the working family&apos;s breeder — fair prices, superior companions, lifetime support.
                   </p>
                 </>
               )}
@@ -279,7 +279,7 @@ export default async function HomePage() {
           <div className="relative z-10 page-section text-center">
             <Reveal animation="fade-up">
               <h2 className="text-4xl md:text-5xl font-display text-white mb-4">
-                {h.ctaHeading || 'Ready to Find Your Perfect Bully?'}
+                {h.ctaHeading || 'Your Furever Family Member Is Waiting'}
               </h2>
             </Reveal>
             <Reveal animation="fade-up" delay={100}>
