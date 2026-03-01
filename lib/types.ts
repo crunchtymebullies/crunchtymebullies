@@ -2,21 +2,24 @@
 // CRUNCHTIME BULLIES — Type Definitions
 // ═══════════════════════════════════════════════════════════
 
-import type { Image as SanityImage } from 'sanity'
-
-// ── Sanity CMS Types (content pages, blogs, dogs) ──
-
-export interface SanityImageAsset extends SanityImage {
+// Sanity image after GROQ dereferencing (asset->{url})
+export interface SanityImageAsset {
+  asset?: { url: string; _ref?: string }
   alt?: string
+  fit?: string
+  position?: string
+  opacity?: number
+  hotspot?: { x: number; y: number; height: number; width: number }
+  crop?: { top: number; bottom: number; left: number; right: number }
 }
 
 export interface Dog {
   _id: string
   name: string
-  slug: { current: string }
+  slug: string
   breed: string
   gender: 'male' | 'female'
-  color: string
+  color?: string
   dob?: string
   weight?: string
   status: 'available' | 'reserved' | 'sold' | 'stud'
@@ -24,10 +27,10 @@ export interface Dog {
   sire?: string
   dam?: string
   registry?: string
-  description?: any[] // Portable Text
-  mainImage: SanityImageAsset
-  gallery: SanityImageAsset[]
-  featured: boolean
+  description?: any[]
+  mainImage?: SanityImageAsset
+  gallery?: SanityImageAsset[]
+  featured?: boolean
   pedigreeUrl?: string
   healthTests?: string[]
 }
@@ -35,11 +38,11 @@ export interface Dog {
 export interface BlogPost {
   _id: string
   title: string
-  slug: { current: string }
-  excerpt: string
-  mainImage: SanityImageAsset
-  body: any[] // Portable Text
-  publishedAt: string
+  slug: string
+  excerpt?: string
+  mainImage?: SanityImageAsset
+  body?: any[]
+  publishedAt?: string
   author?: string
   categories?: string[]
 }
@@ -52,47 +55,51 @@ export interface Review {
   text: string
   dogPurchased?: string
   image?: SanityImageAsset
-  featured: boolean
-  date: string
+  featured?: boolean
+  date?: string
 }
 
 export interface Service {
   _id: string
   title: string
-  slug: { current: string }
-  description: string
-  longDescription?: any[] // Portable Text
+  slug?: string
+  description?: string
+  longDescription?: any[]
   price?: string
-  image: SanityImageAsset
-  featured: boolean
-  order: number
+  image?: SanityImageAsset
+  featured?: boolean
+  order?: number
 }
 
 export interface SiteSettings {
   _id: string
   title: string
-  tagline: string
-  description: string
-  logo: SanityImageAsset
-  logoAlt: SanityImageAsset
-  heroImages: SanityImageAsset[]
-  phone: string
-  email: string
+  tagline?: string
+  description?: string
+  logo?: SanityImageAsset
+  logoDark?: SanityImageAsset
+  phone?: string
+  email?: string
   address?: string
-  socialLinks: {
+  socialLinks?: {
     instagram?: string
     facebook?: string
     tiktok?: string
     youtube?: string
+    twitter?: string
   }
   announcement?: {
     text: string
     link?: string
     active: boolean
   }
+  navigation?: { label: string; href: string }[]
+  footerText?: string
+  copyright?: string
+  footerLinks?: { heading: string; links: { label: string; href: string }[] }[]
 }
 
-// ── Medusa Commerce Types (products, cart, orders) ──
+// ── Medusa Commerce Types ──
 
 export interface MedusaProduct {
   id: string
@@ -134,13 +141,8 @@ export interface Cart {
   tax_total: number
   shipping_total: number
   total: number
-  region: {
-    id: string
-    currency_code: string
-  }
+  region: { id: string; currency_code: string }
 }
-
-// ── Navigation ──
 
 export interface NavItem {
   label: string
