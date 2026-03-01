@@ -40,7 +40,7 @@ export default function Header({ logoUrl, announcement }: { logoUrl?: string; an
         <div className="max-w-site mx-auto px-4 md:px-8 flex items-center justify-between h-20">
           <Link href="/" className="flex items-center gap-3 group">
             {logoUrl ? (
-              <Image src={logoUrl} alt="Crunchtime Bullies" width={60} height={60} className="rounded-full" priority />
+              <Image src={logoUrl} alt="Crunchtyme Bullies" width={60} height={60} className="rounded-full" priority />
             ) : (
               <div className="w-14 h-14 rounded-full border border-gold/40 flex items-center justify-center">
                 <span className="font-display text-gold text-xl">CT</span>

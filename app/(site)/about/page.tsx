@@ -6,7 +6,7 @@ import Reveal from '@/components/Reveal'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'About Us — Crunchtime Bullies',
+  title: 'About Us — Crunchtyme Bullies',
   description: 'Premium American Bullies at working family prices. Health-tested, indoor-raised, and built for furever homes.',
 }
 
@@ -110,7 +110,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <Reveal animation="fade-right">
               <div>
-                <span className="section-label">The Crunchtime Difference</span>
+                <span className="section-label">The Crunchtyme Difference</span>
                 <h2 className="font-display text-white text-3xl md:text-4xl mt-4 mb-6">
                   A Superior Companion.<br />
                   <span className="text-gold">A Price That Respects You.</span>
@@ -153,7 +153,7 @@ export default function AboutPage() {
       </section>
 
       {/* ═══ COMMITMENTS GRID ═══ */}
-      <Section label="Our Commitment" heading="What Every Crunchtime Puppy Comes With">
+      <Section label="Our Commitment" heading="What Every Crunchtyme Puppy Comes With">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {commitments.map((c, i) => (
             <Reveal key={i} animation="scale-up" delay={i * 80}>
@@ -177,7 +177,7 @@ export default function AboutPage() {
                 with a foundation built for a lifetime of health, confidence, and love.&rdquo;
               </p>
               <cite className="text-gold text-sm tracking-[0.2em] uppercase font-heading not-italic">
-                — Crunchtime Bullies
+                — Crunchtyme Bullies
               </cite>
               <div className="gold-line mt-8 mx-auto" />
             </blockquote>

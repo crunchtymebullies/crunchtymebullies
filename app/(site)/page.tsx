@@ -58,7 +58,7 @@ export default async function HomePage() {
               <span className="section-label mb-4 animate-fade-in">{h.heroLabel}</span>
             )}
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display text-white mb-2 leading-[0.95] animate-fade-in-up">
-              {h.heroHeadingLine1 || 'Crunchtime'}
+              {h.heroHeadingLine1 || 'Crunchtyme'}
             </h1>
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display text-gold mb-8 leading-[0.95] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               {h.heroHeadingLine2 || 'Bullies'}

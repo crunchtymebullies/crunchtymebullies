@@ -7,8 +7,8 @@ import { PawPrint, Heart, ShieldCheck, Stethoscope, Home, Truck } from 'lucide-r
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Services — Crunchtime Bullies',
-  description: 'Breeding services, stud service, puppy packages, and more from Crunchtime Bullies.',
+  title: 'Services — Crunchtyme Bullies',
+  description: 'Breeding services, stud service, puppy packages, and more from Crunchtyme Bullies.',
 }
 
 export const revalidate = 60
@@ -29,7 +29,7 @@ const defaultServices = [
   {
     icon: Stethoscope,
     title: 'Health Guarantee',
-    description: 'Every Crunchtime puppy comes with a health guarantee. Our dogs are DNA tested, vet checked, and cleared before they ever leave our care.',
+    description: 'Every Crunchtyme puppy comes with a health guarantee. Our dogs are DNA tested, vet checked, and cleared before they ever leave our care.',
     price: 'Included',
   },
   {
@@ -96,7 +96,7 @@ export default async function ServicesPage() {
         </Section>
       )}
 
-      <Section label="Services" heading="What You Get with Crunchtime">
+      <Section label="Services" heading="What You Get with Crunchtyme">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {defaultServices.map((svc, i) => (
             <Reveal key={i} animation="fade-up" delay={i * 100}>

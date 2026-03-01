@@ -8,7 +8,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Blog',
-  description: 'News, tips, and updates from Crunchtime Bullies.',
+  description: 'News, tips, and updates from Crunchtyme Bullies.',
 }
 
 export const revalidate = 60

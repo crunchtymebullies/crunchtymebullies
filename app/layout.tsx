@@ -25,8 +25,8 @@ const bleuBelle = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Crunchtime Bullies | Premium American Bully Breeding',
-    template: '%s | Crunchtime Bullies',
+    default: 'Crunchtyme Bullies | Premium American Bully Breeding',
+    template: '%s | Crunchtyme Bullies',
   },
   description:
     'Premium American Bully breeding program. Quality bloodlines, health-tested puppies, and professional breeding services.',
@@ -39,10 +39,10 @@ export const metadata: Metadata = {
     'premium bully breeding',
   ],
   openGraph: {
-    title: 'Crunchtime Bullies',
+    title: 'Crunchtyme Bullies',
     description: 'Premium American Bully Breeding',
     url: 'https://crunchtymebullies.com',
-    siteName: 'Crunchtime Bullies',
+    siteName: 'Crunchtyme Bullies',
     type: 'website',
   },
 }

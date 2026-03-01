@@ -8,7 +8,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Client Reviews',
-  description: 'See what our clients say about their Crunchtime Bullies experience.',
+  description: 'See what our clients say about their Crunchtyme Bullies experience.',
 }
 
 export const revalidate = 60
@@ -29,7 +29,7 @@ export default async function ReviewsPage() {
           </Reveal>
           <Reveal animation="fade-up" delay={200}>
             <p className="section-subheading mx-auto mt-4">
-              Heartfelt feedback from our valued Crunchtime family.
+              Heartfelt feedback from our valued Crunchtyme family.
             </p>
           </Reveal>
         </div>

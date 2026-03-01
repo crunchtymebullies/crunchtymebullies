@@ -4,7 +4,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Contact Us',
-  description: 'Get in touch with Crunchtime Bullies. Inquire about available puppies, breeding services, or products.',
+  description: 'Get in touch with Crunchtyme Bullies. Inquire about available puppies, breeding services, or products.',
 }
 
 export default function ContactPage() {
