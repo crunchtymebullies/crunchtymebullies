@@ -42,7 +42,7 @@ export default async function BlogPage() {
                 </div>
                 <div className="p-6">
                   <p className="text-white/30 text-xs font-heading tracking-wider mb-2">
-                    {new Date(post.publishedAt).toLocaleDateString('en-US', {
+                    {new Date(post.publishedAt || Date.now()).toLocaleDateString('en-US', {
                       month: 'long', day: 'numeric', year: 'numeric',
                     })}
                   </p>

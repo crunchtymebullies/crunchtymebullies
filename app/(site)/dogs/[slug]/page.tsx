@@ -83,7 +83,7 @@ export default async function DogProfilePage({ params }: { params: { slug: strin
                   <Calendar size={16} className="text-gold" />
                   <div>
                     <p className="text-white/30 text-[10px] tracking-wider uppercase font-heading">Born</p>
-                    <p className="text-white text-sm font-body">{new Date(dog.dob).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                    <p className="text-white text-sm font-body">{new Date(dog.dob || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                   </div>
                 </div>
               )}

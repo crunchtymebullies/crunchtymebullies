@@ -36,7 +36,7 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
         <div className="flex items-center gap-3 mb-4">
           <Calendar size={14} className="text-gold" />
           <time className="text-white/30 text-xs font-heading tracking-wider">
-            {new Date(post.publishedAt).toLocaleDateString('en-US', {
+            {new Date(post.publishedAt || Date.now()).toLocaleDateString('en-US', {
               month: 'long', day: 'numeric', year: 'numeric',
             })}
           </time>
