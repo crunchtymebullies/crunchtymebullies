@@ -50,6 +50,7 @@ export const SITE_SETTINGS_QUERY = `*[_type == "siteSettings"][0]{
 export const HOME_PAGE_QUERY = `*[_type == "homePage"][0]{
   heroLabel, heroHeadingLine1, heroHeadingLine2, heroSubtext,
   heroBackground{ asset->{url}, alt, fit, position, opacity },
+  heroSlides[]{ asset->{url}, alt },
   heroCta1{ text, href, style },
   heroCta2{ text, href, style },
   marqueeItems,

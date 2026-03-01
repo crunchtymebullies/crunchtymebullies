@@ -8,6 +8,7 @@ import Section from '@/components/Section'
 import SanityImage from '@/components/SanityImage'
 import type { Dog, Review, BlogPost } from '@/lib/types'
 import { ArrowRight, Shield, Heart, Award, Star, CheckCircle } from 'lucide-react'
+import HeroSlideshow from '@/components/HeroSlideshow'
 
 export const revalidate = 60
 
@@ -36,16 +37,15 @@ export default async function HomePage() {
       {/* ═══ HERO ═══ */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-brand-black" />
-        {h.heroBackground?.asset?.url && (
-          <SanityImage
-            image={h.heroBackground}
-            fill
-            className="absolute inset-0"
-            priority
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-black via-brand-black/80 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-brand-black to-transparent" />
+        <HeroSlideshow images={(() => {
+          const imgs: string[] = []
+          if (h.heroSlides?.length) {
+            h.heroSlides.forEach((s: any) => { if (s.asset?.url) imgs.push(s.asset.url) })
+          } else if (h.heroBackground?.asset?.url) {
+            imgs.push(h.heroBackground.asset.url)
+          }
+          return imgs
+        })()} />
 
         <div className="relative z-10 page-section py-32">
           <div className="max-w-2xl">

@@ -17,7 +17,8 @@ export default defineType({
     defineField({ name: 'heroHeadingLine1', title: 'Hero Heading Line 1', type: 'string', group: 'hero', initialValue: 'Crunchtime' }),
     defineField({ name: 'heroHeadingLine2', title: 'Hero Heading Line 2', type: 'string', group: 'hero', initialValue: 'Bullies' }),
     defineField({ name: 'heroSubtext', title: 'Hero Subtext', type: 'text', rows: 2, group: 'hero' }),
-    defineField({ name: 'heroBackground', title: 'Hero Background Image', type: 'image', group: 'hero', options: { hotspot: true } }),
+    defineField({ name: 'heroBackground', title: 'Hero Background (Single/Fallback)', type: 'image', group: 'hero', options: { hotspot: true }, description: 'Used if no slideshow images are set' }),
+    defineField({ name: 'heroSlides', title: 'Hero Slideshow Images', type: 'array', group: 'hero', of: [{ type: 'image', options: { hotspot: true } }], description: 'Add multiple images for an animated Ken Burns slideshow. Works with any aspect ratio (16:9, portrait, square). Recommended: 3-5 images.' }),
     defineField({ name: 'heroCta1', title: 'Hero CTA 1', type: 'object', group: 'hero', fields: [
       defineField({ name: 'text', type: 'string', title: 'Text' }),
       defineField({ name: 'href', type: 'string', title: 'Link' }),

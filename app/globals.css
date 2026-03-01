@@ -136,3 +136,42 @@
 
 /* ── Grain Overlay ── */
 /* grain overlay removed for performance */
+
+/* ═══ Ken Burns Slideshow Animations ═══ */
+@keyframes kb-zoom-in {
+  0% { transform: scale(1) translate3d(0,0,0); }
+  100% { transform: scale(1.15) translate3d(0,0,0); }
+}
+@keyframes kb-drift-right {
+  0% { transform: scale(1.05) translate3d(-2%,0,0); }
+  100% { transform: scale(1.2) translate3d(2%,0,0); }
+}
+@keyframes kb-drift-left {
+  0% { transform: scale(1.05) translate3d(2%,0,0); }
+  100% { transform: scale(1.2) translate3d(-2%,0,0); }
+}
+@keyframes kb-zoom-out {
+  0% { transform: scale(1.25) translate3d(0,0,0); }
+  100% { transform: scale(1.05) translate3d(0,0,0); }
+}
+@keyframes kb-drift-up {
+  0% { transform: scale(1.05) translate3d(0,2%,0); }
+  100% { transform: scale(1.2) translate3d(0,-2%,0); }
+}
+
+.animate-kb-zoom-in { animation: kb-zoom-in 8s ease-out forwards; }
+.animate-kb-drift-right { animation: kb-drift-right 8s ease-out forwards; }
+.animate-kb-drift-left { animation: kb-drift-left 8s ease-out forwards; }
+.animate-kb-zoom-out { animation: kb-zoom-out 8s ease-out forwards; }
+.animate-kb-drift-up { animation: kb-drift-up 8s ease-out forwards; }
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-kb-zoom-in,
+  .animate-kb-drift-right,
+  .animate-kb-drift-left,
+  .animate-kb-zoom-out,
+  .animate-kb-drift-up {
+    animation: none;
+  }
+}
