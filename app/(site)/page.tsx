@@ -7,8 +7,10 @@ import Marquee from '@/components/Marquee'
 import Section from '@/components/Section'
 import SanityImage from '@/components/SanityImage'
 import Reveal from '@/components/Reveal'
+import Particles from '@/components/Particles'
+import AnimatedCounter from '@/components/AnimatedCounter'
 import type { Dog, Review, BlogPost } from '@/lib/types'
-import { ArrowRight, Shield, Heart, Award, Star, CheckCircle } from 'lucide-react'
+import { ArrowRight, Shield, Heart, Award, Star, CheckCircle, Dna, Home, DollarSign, Clock } from 'lucide-react'
 import HeroSlideshow from '@/components/HeroSlideshow'
 
 export const revalidate = 60
@@ -34,7 +36,7 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* ═══ HERO ═══ */}
+      {/* ═══ HERO — with particles + shimmer ═══ */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-brand-black" />
         <HeroSlideshow 
@@ -52,6 +54,15 @@ export default async function HomePage() {
           kenBurnsDuration={h.heroKenBurnsDuration || 5}
         />
 
+        {/* Floating gold particles */}
+        <Particles count={25} className="z-[5] opacity-40" />
+
+        {/* Subtle grid overlay */}
+        <div className="absolute inset-0 z-[4] opacity-[0.02]" style={{
+          backgroundImage: 'linear-gradient(rgba(208,185,112,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(208,185,112,0.5) 1px, transparent 1px)',
+          backgroundSize: '80px 80px',
+        }} />
+
         <div className="relative z-10 page-section py-32">
           <div className="max-w-2xl">
             {h.heroLabel && (
@@ -60,7 +71,7 @@ export default async function HomePage() {
             <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display text-white mb-2 leading-[0.95] animate-fade-in-up">
               {h.heroHeadingLine1 || 'Crunchtyme'}
             </h1>
-            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display text-gold mb-8 leading-[0.95] animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display mb-8 leading-[0.95] animate-fade-in-up text-shimmer" style={{ animationDelay: '0.1s' }}>
               {h.heroHeadingLine2 || 'Bullies'}
             </h1>
             {h.heroSubtext && (
@@ -75,7 +86,11 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-fade-in" style={{ animationDelay: '0.6s' }}>
+        {/* Corner accents */}
+        <div className="absolute top-8 right-8 w-20 h-20 border-t border-r border-gold/10 z-10 hidden md:block" />
+        <div className="absolute bottom-20 left-8 w-20 h-20 border-b border-l border-gold/10 z-10 hidden md:block" />
+
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-fade-in z-10" style={{ animationDelay: '0.6s' }}>
           <span className="text-white/20 text-[10px] tracking-[0.3em] uppercase font-heading">Scroll</span>
           <div className="w-px h-8 bg-gradient-to-b from-gold/40 to-transparent" />
         </div>
@@ -86,6 +101,30 @@ export default async function HomePage() {
         <Marquee items={h.marqueeItems} speed={h.marqueeSpeed || 15} />
       )}
 
+      {/* ═══ STATS BAR — animated counters ═══ */}
+      <Reveal animation="fade-up">
+        <section className="py-12 border-y border-white/5 bg-brand-dark/30">
+          <div className="max-w-site mx-auto px-4 md:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
+              {[
+                { icon: Dna, value: 200, suffix: '+', label: 'Genetic Tests Cleared' },
+                { icon: Home, value: 100, suffix: '%', label: 'Indoor Raised' },
+                { icon: Shield, value: 4, suffix: ' Year', label: 'Health Guarantee' },
+                { icon: Clock, value: 24, suffix: '/7', label: 'Lifetime Support' },
+              ].map((stat, i) => (
+                <div key={i} className="text-center">
+                  <stat.icon size={20} className="text-gold/50 mx-auto mb-3" />
+                  <p className="text-3xl md:text-4xl font-display text-white">
+                    <AnimatedCounter end={stat.value} suffix={stat.suffix} duration={2000 + i * 300} />
+                  </p>
+                  <p className="text-white/30 text-xs tracking-[0.15em] uppercase font-heading mt-1">{stat.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </Reveal>
+
       {/* ═══ CATEGORY CARDS ═══ */}
       {h.categoryCards?.length > 0 && (
         <Section>
@@ -93,7 +132,7 @@ export default async function HomePage() {
             <div className={`grid grid-cols-1 ${h.categoryCards.length >= 2 ? 'md:grid-cols-2' : ''} gap-6`}>
               {h.categoryCards.map((card: any, i: number) => (
                 <Reveal key={i} animation="scale-up" delay={i * 150}>
-                  <Link href={card.href || '#'} className="group relative h-72 md:h-80 overflow-hidden block card">
+                  <Link href={card.href || '#'} className="group relative h-72 md:h-80 overflow-hidden block card gradient-border-glow">
                     {card.image?.asset?.url ? (
                       <SanityImage image={card.image} fill className="absolute inset-0 group-hover:scale-105 transition-transform duration-700" />
                     ) : (
@@ -124,15 +163,20 @@ export default async function HomePage() {
       >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <Reveal animation="clip-up" duration={900}>
-            <div className="relative aspect-[4/3] overflow-hidden">
+            <div className="relative aspect-[4/3] overflow-hidden group">
               {h.aboutImage?.asset?.url ? (
-                <SanityImage image={h.aboutImage} fill className="absolute inset-0" />
+                <SanityImage image={h.aboutImage} fill className="absolute inset-0 group-hover:scale-[1.02] transition-transform duration-[1.5s]" />
               ) : (
                 <div className="absolute inset-0 bg-charcoal" />
               )}
               <div className="absolute inset-0 border border-gold/10" />
               <div className="absolute top-0 left-0 w-16 h-16 border-t border-l border-gold/30" />
               <div className="absolute bottom-0 right-0 w-16 h-16 border-b border-r border-gold/30" />
+
+              {/* Floating badge */}
+              <div className="absolute bottom-6 right-6 bg-brand-black/80 backdrop-blur-md border border-gold/20 rounded-xl px-4 py-3 parallax-float">
+                <p className="text-gold text-xs tracking-wider uppercase font-heading">Est. 2024</p>
+              </div>
             </div>
           </Reveal>
 
@@ -159,7 +203,7 @@ export default async function HomePage() {
                 </>
               )}
 
-              {h.aboutFeatures?.length > 0 && (
+              {h.aboutFeatures?.length > 0 ? (
                 <Reveal animation="fade-up" stagger={100}>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
                     {h.aboutFeatures.map((feat: any, i: number) => {
@@ -176,6 +220,24 @@ export default async function HomePage() {
                     })}
                   </div>
                 </Reveal>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8 stagger-in">
+                  {[
+                    { icon: Dna, title: 'Health First', sub: 'DNA tested, vet cleared' },
+                    { icon: Home, title: 'Raised Inside', sub: 'Socialized from day one' },
+                    { icon: DollarSign, title: 'Honest Pricing', sub: 'No hidden fees' },
+                  ].map((feat, i) => (
+                    <div key={i} className="flex items-start gap-3 group">
+                      <div className="w-9 h-9 rounded-lg bg-gold/10 flex items-center justify-center group-hover:bg-gold/20 transition-colors flex-shrink-0">
+                        <feat.icon size={16} className="text-gold" />
+                      </div>
+                      <div>
+                        <p className="text-white text-sm font-heading">{feat.title}</p>
+                        <p className="text-white/30 text-xs font-body mt-0.5">{feat.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
 
               <CTA cta={h.aboutCta} fallbackStyle="gold-outline" />
@@ -191,7 +253,7 @@ export default async function HomePage() {
         </Reveal>
       </div>
 
-      {/* ═══ FEATURED DOGS ═══ */}
+      {/* ═══ FEATURED DOGS — with gradient border glow ═══ */}
       {dogs.length > 0 && (
         <Section
           className="bg-brand-dark"
@@ -202,7 +264,9 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {dogs.map((dog, i) => (
               <Reveal key={dog._id} animation="scale-up" delay={i * 100}>
-                <DogCard dog={dog} />
+                <div className="gradient-border-glow rounded-2xl">
+                  <DogCard dog={dog} />
+                </div>
               </Reveal>
             ))}
           </div>
@@ -214,7 +278,7 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {/* ═══ REVIEWS ═══ */}
+      {/* ═══ REVIEWS — with quote marks ═══ */}
       {reviews.length > 0 && (
         <Section
           label={h.reviewsLabel || 'Testimonials'}
@@ -223,10 +287,17 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reviews.map((review, i) => (
               <Reveal key={review._id} animation="fade-up" delay={i * 120}>
-                <ReviewCard review={review} />
+                <div className="gradient-border-glow rounded-2xl">
+                  <ReviewCard review={review} />
+                </div>
               </Reveal>
             ))}
           </div>
+          <Reveal animation="fade-up" delay={400}>
+            <div className="text-center mt-10">
+              <Link href="/reviews" className="btn-gold-outline btn-sm">Read All Reviews</Link>
+            </div>
+          </Reveal>
         </Section>
       )}
 
@@ -240,7 +311,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {posts.map((post, i) => (
               <Reveal key={post._id} animation="fade-up" delay={i * 100}>
-                <Link href={`/blog/${post.slug}`} className="group card overflow-hidden block">
+                <Link href={`/blog/${post.slug}`} className="group card card-hover overflow-hidden block gradient-border-glow rounded-2xl">
                   <div className="relative aspect-[16/10] overflow-hidden">
                     {post.mainImage?.asset?.url ? (
                       <Image
@@ -265,10 +336,15 @@ export default async function HomePage() {
               </Reveal>
             ))}
           </div>
+          <Reveal animation="fade-up" delay={300}>
+            <div className="text-center mt-10">
+              <Link href="/blog" className="btn-gold-outline btn-sm">View All Posts</Link>
+            </div>
+          </Reveal>
         </Section>
       )}
 
-      {/* ═══ FINAL CTA ═══ */}
+      {/* ═══ FINAL CTA — with particles ═══ */}
       <Reveal animation="fade-in" threshold={0.2}>
         <section className="relative py-24 overflow-hidden">
           <div className="absolute inset-0 bg-brand-black" />
@@ -276,6 +352,12 @@ export default async function HomePage() {
             <SanityImage image={h.ctaBackground} fill className="absolute inset-0" />
           )}
           <div className="absolute inset-0 bg-brand-black/70" />
+          <Particles count={15} className="z-[2] opacity-30" />
+
+          {/* Decorative corner lines */}
+          <div className="absolute top-12 left-12 w-24 h-24 border-t border-l border-gold/10 z-[3] hidden md:block" />
+          <div className="absolute bottom-12 right-12 w-24 h-24 border-b border-r border-gold/10 z-[3] hidden md:block" />
+
           <div className="relative z-10 page-section text-center">
             <Reveal animation="fade-up">
               <h2 className="text-4xl md:text-5xl font-display text-white mb-4">
@@ -283,12 +365,24 @@ export default async function HomePage() {
               </h2>
             </Reveal>
             <Reveal animation="fade-up" delay={100}>
-              {h.ctaText && <p className="text-white/50 font-body text-lg max-w-xl mx-auto mb-8">{h.ctaText}</p>}
+              {h.ctaText ? (
+                <p className="text-white/50 font-body text-lg max-w-xl mx-auto mb-8">{h.ctaText}</p>
+              ) : (
+                <p className="text-white/50 font-body text-lg max-w-xl mx-auto mb-8">
+                  Browse our available puppies or get in touch to learn about upcoming litters.
+                </p>
+              )}
             </Reveal>
             <Reveal animation="fade-up" delay={200}>
               <div className="flex flex-wrap justify-center gap-4">
                 <CTA cta={h.ctaButton1} fallbackStyle="gold" />
                 <CTA cta={h.ctaButton2} fallbackStyle="gold-outline" />
+                {!h.ctaButton1 && !h.ctaButton2 && (
+                  <>
+                    <Link href="/dogs" className="btn-gold">Meet Our Dogs</Link>
+                    <Link href="/contact" className="btn-gold-outline">Get In Touch</Link>
+                  </>
+                )}
               </div>
             </Reveal>
           </div>
