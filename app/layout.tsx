@@ -25,7 +25,7 @@ const bleuBelle = localFont({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Crunchtyme Bullies | Premium American Bully Breeding',
+    default: 'Crunchtyme Bullies — Premium Bullies. Working Family Prices.',
     template: '%s | Crunchtyme Bullies',
   },
   description:
