@@ -573,6 +573,13 @@ export default function ManagePage() {
       {/* Toasts */}
       {toasts.map(t => <Toast key={t.id} toast={t} onDismiss={() => setToasts(prev => prev.filter(x => x.id !== t.id))} />)}
 
+      {/* Nav */}
+      <div className="flex items-center justify-between pb-2 border-b border-white/5">
+        <Link href="/go" className="flex items-center gap-2 text-white/40 hover:text-gold text-sm font-heading transition-colors">
+          <ArrowLeft size={16} /> Command Center
+        </Link>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
