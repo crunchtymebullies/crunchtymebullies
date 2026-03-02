@@ -8,6 +8,7 @@ const statusColor: Record<string, string> = {
   reserved: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
   stud: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   retired: 'bg-white/10 text-white/40 border-white/20',
+  'our-program': 'bg-gold/15 text-gold border-gold/30',
   upcoming: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
 
@@ -47,7 +48,7 @@ export default function DogCard({ dog }: { dog: Dog }) {
         <div className="p-5">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-display text-lg group-hover:text-gold transition-colors">{dog.name}</h3>
-            {(dog as any).price && (
+            {(dog as any).price && dog.status === 'available' && (
               <span className="text-gold font-heading text-sm">${(dog as any).price?.toLocaleString()}</span>
             )}
           </div>
