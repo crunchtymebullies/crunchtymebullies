@@ -61,16 +61,17 @@ const emptyForm: DogFormData = {
   sire: '', dam: '', bloodline: '', registry: '', registrationNumber: '',
 }
 
-const STATUSES = ['available', 'reserved', 'sold', 'stud', 'retired', 'upcoming'] as const
+const STATUSES = ['available', 'reserved', 'sold', 'stud', 'our-program', 'retired', 'upcoming'] as const
 const VARIETIES = ['Standard', 'Classic', 'Pocket', 'XL', 'Micro', 'Exotic'] as const
 
 const statusColors: Record<string, string> = {
-  available: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-  reserved: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-  sold: 'bg-red-500/20 text-red-400 border-red-500/30',
-  stud: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  retired: 'bg-white/10 text-white/40 border-white/20',
-  upcoming: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
+  'available': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
+  'reserved': 'bg-amber-500/20 text-amber-400 border-amber-500/30',
+  'sold': 'bg-red-500/20 text-red-400 border-red-500/30',
+  'stud': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
+  'our-program': 'bg-emerald-600/20 text-emerald-300 border-emerald-600/30',
+  'retired': 'bg-white/10 text-white/40 border-white/20',
+  'upcoming': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

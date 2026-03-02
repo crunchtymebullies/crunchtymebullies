@@ -15,7 +15,8 @@ export async function GET(req: NextRequest) {
       `*[_type == "dog"] | order(name asc) {
         _id, name, slug, breed, variety, gender, color, dob, weight, height,
         status, price, featured, personality, description,
-        mainImage, gallery,
+        mainImage{ ..., asset->{ url, _id } },
+        gallery[]{ ..., asset->{ url, _id } },
         sire, dam, bloodline, registry, registrationNumber
       }`
     )
