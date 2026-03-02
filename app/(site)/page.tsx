@@ -9,8 +9,12 @@ import SanityImage from '@/components/SanityImage'
 import Reveal from '@/components/Reveal'
 import Particles from '@/components/Particles'
 import AnimatedCounter from '@/components/AnimatedCounter'
+import AuroraCanvas from '@/components/AuroraCanvas'
+import SwipeCarousel from '@/components/SwipeCarousel'
+import HaloGlow from '@/components/HaloGlow'
+import ScrollProgress from '@/components/ScrollProgress'
 import type { Dog, Review, BlogPost } from '@/lib/types'
-import { ArrowRight, Shield, Heart, Award, Star, CheckCircle, Dna, Home, DollarSign, Clock } from 'lucide-react'
+import { ArrowRight, Shield, Heart, Award, Star, CheckCircle, Dna, Home, DollarSign, Clock, ChevronRight } from 'lucide-react'
 import HeroSlideshow from '@/components/HeroSlideshow'
 
 export const revalidate = 60
@@ -36,7 +40,9 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* ═══ HERO — with particles + shimmer ═══ */}
+      <ScrollProgress />
+
+      {/* ═══ HERO — with aurora canvas + particles ═══ */}
       <section className="relative min-h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 bg-brand-black" />
         <HeroSlideshow 
@@ -54,14 +60,11 @@ export default async function HomePage() {
           kenBurnsDuration={h.heroKenBurnsDuration || 5}
         />
 
-        {/* Floating gold particles */}
-        <Particles count={25} className="z-[5] opacity-40" />
+        {/* Aurora glow behind hero */}
+        <AuroraCanvas className="z-[3] opacity-60" orbCount={3} intensity={0.08} />
 
-        {/* Subtle grid overlay */}
-        <div className="absolute inset-0 z-[4] opacity-[0.02]" style={{
-          backgroundImage: 'linear-gradient(rgba(208,185,112,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(208,185,112,0.5) 1px, transparent 1px)',
-          backgroundSize: '80px 80px',
-        }} />
+        {/* Floating gold particles */}
+        <Particles count={15} className="z-[5] opacity-30" />
 
         <div className="relative z-10 page-section py-32">
           <div className="max-w-2xl">
@@ -160,7 +163,9 @@ export default async function HomePage() {
       <Section
         label={h.aboutLabel || 'About Us'}
         heading={h.aboutHeading || 'Puppies You Can Count On'}
+        className="relative overflow-hidden"
       >
+        <HaloGlow position="top-right" color="gold" size={350} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           <Reveal animation="clip-up" duration={900}>
             <div className="relative aspect-[4/3] overflow-hidden group">
@@ -253,10 +258,10 @@ export default async function HomePage() {
         </Reveal>
       </div>
 
-      {/* ═══ FEATURED DOGS — with gradient border glow ═══ */}
+      {/* ═══ FEATURED DOGS ═══ */}
       {dogs.length > 0 && (
         <Section
-          className="bg-brand-dark"
+          className="bg-brand-dark relative overflow-hidden"
           label={h.dogsLabel || 'Our Dogs'}
           heading={h.dogsHeading || 'Featured Bullies'}
           subheading={h.dogsSubheading}
@@ -278,70 +283,85 @@ export default async function HomePage() {
         </Section>
       )}
 
-      {/* ═══ REVIEWS — with quote marks ═══ */}
+      {/* ═══ REVIEWS — swipeable carousel ═══ */}
       {reviews.length > 0 && (
-        <Section
-          label={h.reviewsLabel || 'Testimonials'}
-          heading={h.reviewsHeading || 'What Our Clients Say'}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {reviews.map((review, i) => (
-              <Reveal key={review._id} animation="fade-up" delay={i * 120}>
-                <div className="gradient-border-glow rounded-2xl">
-                  <ReviewCard review={review} />
-                </div>
-              </Reveal>
-            ))}
+        <section className="py-16 md:py-24 relative overflow-hidden">
+          <HaloGlow position="left" color="gold" size={500} />
+          <div className="max-w-site mx-auto px-4 md:px-8 relative z-10">
+            <Reveal animation="fade-up">
+              <div className="text-center mb-10">
+                <span className="section-label">{h.reviewsLabel || 'Testimonials'}</span>
+                <h2 className="text-3xl md:text-4xl font-display text-white mt-3">{h.reviewsHeading || 'What Our Clients Say'}</h2>
+              </div>
+            </Reveal>
+            <Reveal animation="fade-up" delay={150}>
+              <SwipeCarousel autoPlay autoPlayMs={6000}>
+                {reviews.map((review) => (
+                  <div key={review._id} className="h-full">
+                    <ReviewCard review={review} />
+                  </div>
+                ))}
+              </SwipeCarousel>
+            </Reveal>
+            <Reveal animation="fade-up" delay={300}>
+              <div className="text-center mt-8">
+                <Link href="/reviews" className="inline-flex items-center gap-2 text-gold text-xs tracking-[0.2em] uppercase font-heading hover:gap-3 transition-all">
+                  Read All Reviews <ChevronRight size={14} />
+                </Link>
+              </div>
+            </Reveal>
           </div>
-          <Reveal animation="fade-up" delay={400}>
-            <div className="text-center mt-10">
-              <Link href="/reviews" className="btn-gold-outline btn-sm">Read All Reviews</Link>
-            </div>
-          </Reveal>
-        </Section>
+        </section>
       )}
 
-      {/* ═══ BLOG PREVIEW ═══ */}
+      {/* ═══ BLOG — swipeable cards ═══ */}
       {posts.length > 0 && (
-        <Section
-          className="bg-brand-dark"
-          label={h.blogLabel || 'From The Blog'}
-          heading={h.blogHeading || 'Latest Posts'}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {posts.map((post, i) => (
-              <Reveal key={post._id} animation="fade-up" delay={i * 100}>
-                <Link href={`/blog/${post.slug}`} className="group card card-hover overflow-hidden block gradient-border-glow rounded-2xl">
-                  <div className="relative aspect-[16/10] overflow-hidden">
-                    {post.mainImage?.asset?.url ? (
-                      <Image
-                        src={post.mainImage.asset.url}
-                        alt={post.mainImage?.alt || post.title}
-                        fill className="object-cover group-hover:scale-105 transition-transform duration-700"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-charcoal" />
-                    )}
-                  </div>
-                  <div className="p-6">
-                    {post.publishedAt && (
-                      <time className="text-gold/50 text-xs tracking-[0.15em] uppercase font-heading">
-                        {new Date(post.publishedAt || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                      </time>
-                    )}
-                    <h3 className="text-white font-display text-xl mt-2 group-hover:text-gold transition-colors">{post.title}</h3>
-                    {post.excerpt && <p className="text-white/40 font-body text-sm mt-2 line-clamp-2">{post.excerpt}</p>}
-                  </div>
+        <section className="py-16 md:py-24 bg-brand-dark relative overflow-hidden">
+          <HaloGlow position="right" color="gold" size={400} />
+          <div className="max-w-site mx-auto px-4 md:px-8 relative z-10">
+            <Reveal animation="fade-up">
+              <div className="text-center mb-10">
+                <span className="section-label">{h.blogLabel || 'From The Blog'}</span>
+                <h2 className="text-3xl md:text-4xl font-display text-white mt-3">{h.blogHeading || 'Latest Posts'}</h2>
+              </div>
+            </Reveal>
+            <Reveal animation="fade-up" delay={150}>
+              <SwipeCarousel autoPlay autoPlayMs={7000}>
+                {posts.map((post) => (
+                  <Link key={post._id} href={`/blog/${post.slug}`} className="group card card-hover overflow-hidden block rounded-2xl h-full">
+                    <div className="relative aspect-[16/10] overflow-hidden">
+                      {post.mainImage?.asset?.url ? (
+                        <Image
+                          src={post.mainImage.asset.url}
+                          alt={post.mainImage?.alt || post.title}
+                          fill className="object-cover group-hover:scale-105 transition-transform duration-700"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 bg-charcoal" />
+                      )}
+                    </div>
+                    <div className="p-5">
+                      {post.publishedAt && (
+                        <time className="text-gold/50 text-xs tracking-[0.15em] uppercase font-heading">
+                          {new Date(post.publishedAt || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                        </time>
+                      )}
+                      <h3 className="text-white font-display text-lg mt-2 group-hover:text-gold transition-colors">{post.title}</h3>
+                      {post.excerpt && <p className="text-white/40 font-body text-sm mt-2 line-clamp-2">{post.excerpt}</p>}
+                    </div>
+                  </Link>
+                ))}
+              </SwipeCarousel>
+            </Reveal>
+            <Reveal animation="fade-up" delay={300}>
+              <div className="text-center mt-8">
+                <Link href="/blog" className="inline-flex items-center gap-2 text-gold text-xs tracking-[0.2em] uppercase font-heading hover:gap-3 transition-all">
+                  View All Posts <ChevronRight size={14} />
                 </Link>
-              </Reveal>
-            ))}
+              </div>
+            </Reveal>
           </div>
-          <Reveal animation="fade-up" delay={300}>
-            <div className="text-center mt-10">
-              <Link href="/blog" className="btn-gold-outline btn-sm">View All Posts</Link>
-            </div>
-          </Reveal>
-        </Section>
+        </section>
       )}
 
       {/* ═══ FINAL CTA — with particles ═══ */}
@@ -352,7 +372,9 @@ export default async function HomePage() {
             <SanityImage image={h.ctaBackground} fill className="absolute inset-0" />
           )}
           <div className="absolute inset-0 bg-brand-black/70" />
-          <Particles count={15} className="z-[2] opacity-30" />
+          <AuroraCanvas className="z-[1] opacity-40" orbCount={2} intensity={0.1} />
+          <Particles count={10} className="z-[2] opacity-20" />
+          <HaloGlow position="center" color="gold" size={600} />
 
           {/* Decorative corner lines */}
           <div className="absolute top-12 left-12 w-24 h-24 border-t border-l border-gold/10 z-[3] hidden md:block" />
