@@ -8,61 +8,62 @@ type Tab = 'overview' | 'dogs' | 'store' | 'customers' | 'payments' | 'messages'
 type ToastType = { message: string; type: 'success' | 'error'; id: number }
 
 interface DogAdmin {
-  _id: string
-  name: string
-  slug: { _type: string; current: string }
-  breed: string
-  variety?: string
-  gender?: string
-  color?: string
-  dob?: string
-  weight?: string
-  height?: string
-  status: string
-  price?: number
-  featured?: boolean
-  personality?: string
-  description?: any[]
-  mainImage?: any
-  gallery?: any[]
-  sire?: string
-  dam?: string
-  bloodline?: string
-  registry?: string
-  registrationNumber?: string
+  _id: string; name: string; slug: { _type: string; current: string }
+  breed: string; variety?: string; gender?: string; color?: string
+  dob?: string; weight?: string; height?: string; status: string
+  price?: number; featured?: boolean; personality?: string
+  description?: string; mainImage?: any; gallery?: any[]
+  sire?: string; dam?: string; bloodline?: string
+  registry?: string; registrationNumber?: string
 }
 
 interface DogFormData {
-  name: string
-  breed: string
-  variety: string
-  gender: string
-  color: string
-  dob: string
-  weight: string
-  height: string
-  status: string
-  price: string
-  featured: boolean
-  personality: string
-  mainImage: any | null
-  gallery: any[]
-  sire: string
-  dam: string
-  bloodline: string
-  registry: string
-  registrationNumber: string
+  name: string; breed: string; variety: string; gender: string
+  color: string; dob: string; weight: string; height: string
+  status: string; price: string; featured: boolean; personality: string
+  description: string; mainImage: any | null; gallery: any[]
+  sire: string; dam: string; bloodline: string
+  registry: string; registrationNumber: string
 }
 
 const emptyForm: DogFormData = {
   name: '', breed: 'American Bully', variety: '', gender: '', color: '',
   dob: '', weight: '', height: '', status: 'available', price: '',
-  featured: false, personality: '', mainImage: null, gallery: [],
+  featured: false, personality: '', description: '', mainImage: null, gallery: [],
   sire: '', dam: '', bloodline: '', registry: '', registrationNumber: '',
 }
 
-const STATUSES = ['available', 'reserved', 'sold', 'stud', 'our-program', 'retired', 'upcoming'] as const
-const VARIETIES = ['Standard', 'Classic', 'Pocket', 'XL', 'Micro', 'Exotic'] as const
+// ─── Dropdown Data ───────────────────────────────────────────────────────────
+const BREEDS = [
+  'American Bully', 'French Bulldog', 'English Bulldog', 'Exotic Bully', 'Micro Bully',
+  'American Pit Bull Terrier', 'American Staffordshire Terrier', 'American Bulldog',
+  'Cane Corso', 'Dogo Argentino', 'Bullmastiff', 'Olde English Bulldogge',
+  'Shorty Bull', 'Staffordshire Bull Terrier', 'Bull Terrier',
+  'Presa Canario', 'Boxer', 'Alapaha Blue Blood Bulldog',
+]
+
+const VARIETY_MAP: Record<string, string[]> = {
+  'American Bully': ['Standard', 'Classic', 'Pocket', 'XL', 'Micro', 'Exotic'],
+  'French Bulldog': ['Standard', 'Micro', 'Fluffy/Long-Hair'],
+  'English Bulldog': ['Standard', 'Miniature'],
+  'Exotic Bully': ['Standard', 'Micro', 'Clean Exotic'],
+  'Micro Bully': ['Standard', 'Extreme'],
+  'American Pit Bull Terrier': ['Standard'],
+  'Cane Corso': ['Standard'],
+}
+
+const COLORS = [
+  'Black', 'Blue', 'Fawn', 'Red', 'White', 'Champagne', 'Chocolate', 'Lilac', 'Cream',
+  'Blue Fawn', 'Blue Brindle', 'Fawn Brindle', 'Reverse Brindle', 'Red Brindle',
+  'Blue Tri', 'Lilac Tri', 'Chocolate Tri', 'Black Tri', 'Ghost Tri',
+  'Blue Merle', 'Lilac Merle', 'Chocolate Merle', 'Red Merle',
+  'Piebald', 'Tuxedo', 'Seal', 'Sable',
+  'Blue Nose', 'Red Nose',
+]
+
+const REGISTRIES = ['ABKC', 'UKC', 'AKC', 'ADBA', 'USBR', 'OBKC', 'BBCR', 'APRI', 'DRA', 'IDCR']
+
+const STATUSES = ['available', 'reserved', 'sold', 'stud', 'our-program', 'not-for-sale', 'retired', 'upcoming'] as const
 
 const statusColors: Record<string, string> = {
   'available': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
@@ -70,6 +71,7 @@ const statusColors: Record<string, string> = {
   'sold': 'bg-red-500/20 text-red-400 border-red-500/30',
   'stud': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
   'our-program': 'bg-emerald-600/20 text-emerald-300 border-emerald-600/30',
+  'not-for-sale': 'bg-white/10 text-white/50 border-white/20',
   'retired': 'bg-white/10 text-white/40 border-white/20',
   'upcoming': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
 }
@@ -104,6 +106,7 @@ function dogToForm(dog: DogAdmin): DogFormData {
     weight: dog.weight || '', height: dog.height || '',
     status: dog.status || 'available', price: dog.price != null ? String(dog.price) : '',
     featured: dog.featured || false, personality: dog.personality || '',
+    description: typeof dog.description === 'string' ? dog.description : '',
     mainImage: dog.mainImage || null, gallery: dog.gallery || [],
     sire: dog.sire || '', dam: dog.dam || '',
     bloodline: dog.bloodline || '', registry: dog.registry || '',
@@ -138,10 +141,43 @@ function useAdminApi(password: string) {
     return res.json() as Promise<{ _id: string; url: string }>
   }, [password])
 
-  return { adminFetch, adminPost, adminUpload }
+  return { adminFetch, adminPost, adminUpload } as const
 }
 
-// ─── SVG Icons (inline to avoid extra imports) ───────────────────────────────
+// ─── Combo Select (dropdown + manual entry) ──────────────────────────────────
+function ComboSelect({ value, onChange, options, placeholder, className }: {
+  value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; className?: string
+}) {
+  const isCustom = !!(value && !options.includes(value))
+  const [manualMode, setManualMode] = useState(isCustom)
+
+  useEffect(() => { if (value && !options.includes(value)) setManualMode(true) }, [value, options])
+
+  const inputCls = `w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-3 text-white font-body focus:border-gold/40 focus:outline-none placeholder:text-white/15 transition-colors [color-scheme:dark] ${className || ''}`
+
+  if (manualMode) {
+    return (
+      <div className="flex gap-2">
+        <input type="text" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder || 'Type your own...'} className={inputCls} />
+        <button type="button" onClick={() => { setManualMode(false); onChange('') }}
+          className="px-3 rounded-lg border border-white/10 text-white/30 hover:text-gold text-xs font-heading shrink-0 transition-colors">List</button>
+      </div>
+    )
+  }
+
+  return (
+    <select value={options.includes(value) ? value : ''} onChange={e => {
+      if (e.target.value === '__other__') { setManualMode(true); onChange('') }
+      else onChange(e.target.value)
+    }} className={inputCls}>
+      <option value="">{placeholder || 'Select...'}</option>
+      {options.map(o => <option key={o} value={o}>{o}</option>)}
+      <option value="__other__">Other (type your own)</option>
+    </select>
+  )
+}
+
+// ─── SVG Icons ───────────────────────────────────────────────────────────────
 const icons = {
   overview: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
   dogs: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2.5"/><path d="M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/></svg>,
@@ -160,6 +196,8 @@ const icons = {
   star: <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   starOutline: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
   more: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>,
+  up: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="18 15 12 9 6 15"/></svg>,
+  down: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="6 9 12 15 18 9"/></svg>,
 }
 
 // ─── Nav Config ──────────────────────────────────────────────────────────────
@@ -173,12 +211,11 @@ const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: bool
   { id: 'settings', label: 'Settings', icon: 'settings' },
   { id: 'analytics', label: 'Analytics', icon: 'analytics', comingSoon: true },
 ]
-
 const mobileNavItems: { id: Tab | 'more'; label: string; icon: keyof typeof icons }[] = [
   { id: 'overview', label: 'Home', icon: 'overview' },
   { id: 'dogs', label: 'Dogs', icon: 'dogs' },
   { id: 'store', label: 'Store', icon: 'store' },
-  { id: 'payments', label: 'Payments', icon: 'payments' },
+  { id: 'payments', label: 'Pay', icon: 'payments' },
   { id: 'more', label: 'More', icon: 'more' },
 ]
 
@@ -194,7 +231,6 @@ function Toast({ toast, onDismiss }: { toast: ToastType; onDismiss: () => void }
   )
 }
 
-// ─── Confirm Modal ────────────────────────────────────────────────────────────
 function ConfirmModal({ title, message, onConfirm, onCancel }: { title: string; message: string; onConfirm: () => void; onCancel: () => void }) {
   return (
     <div className="fixed inset-0 z-[10002] flex items-center justify-center px-4">
@@ -211,7 +247,6 @@ function ConfirmModal({ title, message, onConfirm, onCancel }: { title: string; 
   )
 }
 
-// ─── Coming Soon Placeholder ─────────────────────────────────────────────────
 function ComingSoon({ title, description, icon }: { title: string; description: string; icon: keyof typeof icons }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -231,18 +266,13 @@ function ComingSoon({ title, description, icon }: { title: string; description: 
 // MAIN ADMIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function ManagePage() {
-  // ─── Auth ────────────────────────────────────────────────────────────────
   const [authState, setAuthState] = useState<'checking' | 'locked' | 'authenticated'>('checking')
   const [password, setPassword] = useState('')
   const [passwordInput, setPasswordInput] = useState('')
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
-
-  // ─── Tab state ───────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // ─── Toast ───────────────────────────────────────────────────────────────
   const [toasts, setToasts] = useState<ToastType[]>([])
   const toastIdRef = useRef(0)
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
@@ -250,10 +280,10 @@ export default function ManagePage() {
     setToasts(prev => [...prev, { message, type, id }])
   }, [])
 
-  // ─── API ─────────────────────────────────────────────────────────────────
-  const api = useAdminApi(password)
+  // Destructure API hooks for stable references (fixes settings strobe bug)
+  const { adminFetch, adminPost, adminUpload } = useAdminApi(password)
 
-  // ─── Dog state ───────────────────────────────────────────────────────────
+  // Dog state
   const [dogs, setDogs] = useState<DogAdmin[]>([])
   const [loading, setLoading] = useState(true)
   const [dogView, setDogView] = useState<'list' | 'form'>('list')
@@ -266,42 +296,41 @@ export default function ManagePage() {
   const [uploadingMain, setUploadingMain] = useState(false)
   const [uploadingGallery, setUploadingGallery] = useState(false)
 
-  // ─── Settings state ──────────────────────────────────────────────────────
+  // Settings state
   const [settingsData, setSettingsData] = useState<Record<string, any>>({})
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsSaving, setSettingsSaving] = useState(false)
+  const settingsLoadedRef = useRef(false)
 
-  // ─── Session check ───────────────────────────────────────────────────────
+  // Session check
   useEffect(() => {
     const saved = sessionStorage.getItem('ct-admin-auth')
     if (saved) { setPassword(saved); setAuthState('authenticated') }
     else setAuthState('locked')
   }, [])
 
-  // ─── Load dogs ───────────────────────────────────────────────────────────
+  // Load dogs
   const loadDogs = useCallback(async () => {
-    try {
-      const data = await api.adminFetch('/api/go/dogs')
-      setDogs(data)
-    } catch (err: any) { showToast(err.message, 'error') }
+    try { const data = await adminFetch('/api/go/dogs'); setDogs(data) }
+    catch (err: any) { showToast(err.message, 'error') }
     finally { setLoading(false) }
-  }, [api, showToast])
+  }, [adminFetch, showToast])
 
   useEffect(() => { if (authState === 'authenticated') loadDogs() }, [authState, loadDogs])
 
-  // ─── Load settings ──────────────────────────────────────────────────────
-  const loadSettings = useCallback(async () => {
-    setSettingsLoading(true)
-    try {
-      const data = await api.adminFetch('/api/go/settings')
-      setSettingsData(data || {})
-    } catch (err: any) { showToast(err.message, 'error') }
-    finally { setSettingsLoading(false) }
-  }, [api, showToast])
+  // Load settings (only once per session to prevent strobe)
+  useEffect(() => {
+    if (authState === 'authenticated' && activeTab === 'settings' && !settingsLoadedRef.current) {
+      settingsLoadedRef.current = true
+      setSettingsLoading(true)
+      adminFetch('/api/go/settings')
+        .then(data => setSettingsData(data || {}))
+        .catch((err: any) => showToast(err.message, 'error'))
+        .finally(() => setSettingsLoading(false))
+    }
+  }, [authState, activeTab, adminFetch, showToast])
 
-  useEffect(() => { if (authState === 'authenticated' && activeTab === 'settings') loadSettings() }, [authState, activeTab, loadSettings])
-
-  // ─── Auth handler ────────────────────────────────────────────────────────
+  // Auth handler
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault(); setAuthError(''); setAuthLoading(true)
     try {
@@ -318,12 +347,7 @@ export default function ManagePage() {
     finally { setAuthLoading(false) }
   }
 
-  // ─── Tab switch ──────────────────────────────────────────────────────────
-  const switchTab = (tab: Tab) => {
-    setActiveTab(tab)
-    setSidebarOpen(false)
-    if (tab === 'dogs') { setDogView('list'); setEditingDog(null) }
-  }
+  const switchTab = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false); if (tab === 'dogs') { setDogView('list'); setEditingDog(null) } }
 
   // ─── Dog CRUD ────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -332,10 +356,8 @@ export default function ManagePage() {
     setSaving(true)
     try {
       const payload: Record<string, any> = {
-        name: form.name.trim(),
-        slug: { _type: 'slug', current: generateSlug(form.name) },
-        breed: form.breed || 'American Bully',
-        status: form.status, featured: form.featured, mainImage: form.mainImage,
+        name: form.name.trim(), slug: { _type: 'slug', current: generateSlug(form.name) },
+        breed: form.breed || 'American Bully', status: form.status, featured: form.featured, mainImage: form.mainImage,
       }
       if (form.variety) payload.variety = form.variety
       if (form.gender) payload.gender = form.gender
@@ -345,6 +367,7 @@ export default function ManagePage() {
       if (form.height) payload.height = form.height
       if (form.price) payload.price = Number(form.price)
       if (form.personality) payload.personality = form.personality
+      if (form.description) payload.description = form.description
       if (form.gallery.length > 0) payload.gallery = form.gallery
       if (form.sire) payload.sire = form.sire
       if (form.dam) payload.dam = form.dam
@@ -354,10 +377,10 @@ export default function ManagePage() {
 
       if (editingDog) {
         payload._id = editingDog._id
-        await api.adminPost('/api/go/dogs', { action: 'update', payload })
+        await adminPost('/api/go/dogs', { action: 'update', payload })
         showToast(`${form.name} updated`)
       } else {
-        await api.adminPost('/api/go/dogs', { action: 'create', payload })
+        await adminPost('/api/go/dogs', { action: 'create', payload })
         showToast(`${form.name} added`)
       }
       setDogView('list'); setEditingDog(null); await loadDogs()
@@ -368,7 +391,7 @@ export default function ManagePage() {
   const handleDeleteDog = async () => {
     if (!editingDog) return; setShowDelete(false); setSaving(true)
     try {
-      await api.adminPost('/api/go/dogs', { action: 'delete', payload: { _id: editingDog._id } })
+      await adminPost('/api/go/dogs', { action: 'delete', payload: { _id: editingDog._id } })
       showToast(`${editingDog.name} deleted`); setDogView('list'); setEditingDog(null); await loadDogs()
     } catch (err: any) { showToast(err.message, 'error') }
     finally { setSaving(false) }
@@ -376,7 +399,7 @@ export default function ManagePage() {
 
   const toggleFeatured = async (dog: DogAdmin) => {
     try {
-      await api.adminPost('/api/go/dogs', { action: 'toggle_featured', payload: { _id: dog._id, featured: dog.featured } })
+      await adminPost('/api/go/dogs', { action: 'toggle_featured', payload: { _id: dog._id, featured: dog.featured } })
       setDogs(prev => prev.map(d => d._id === dog._id ? { ...d, featured: !d.featured } : d))
       showToast(dog.featured ? 'Removed from homepage' : 'Added to homepage')
     } catch (err: any) { showToast(err.message, 'error') }
@@ -386,17 +409,17 @@ export default function ManagePage() {
     const idx = STATUSES.indexOf(dog.status as any)
     const next = STATUSES[(idx + 1) % STATUSES.length]
     try {
-      await api.adminPost('/api/go/dogs', { action: 'set_status', payload: { _id: dog._id, status: next } })
+      await adminPost('/api/go/dogs', { action: 'set_status', payload: { _id: dog._id, status: next } })
       setDogs(prev => prev.map(d => d._id === dog._id ? { ...d, status: next } : d))
       showToast(`${dog.name} → ${next}`)
     } catch (err: any) { showToast(err.message, 'error') }
   }
 
-  // ─── Image upload ────────────────────────────────────────────────────────
+  // Image upload + reorder
   const uploadMainImage = async (file: File) => {
     setUploadingMain(true)
     try {
-      const result = await api.adminUpload(file, form.name || 'dog')
+      const result = await adminUpload(file, form.name || 'dog')
       setForm(f => ({ ...f, mainImage: { _type: 'image', asset: { _type: 'reference', _ref: result._id } } }))
       showToast('Main photo uploaded')
     } catch (err: any) { showToast(err.message, 'error') }
@@ -408,7 +431,7 @@ export default function ManagePage() {
     const newImages: any[] = []
     for (const file of Array.from(files)) {
       try {
-        const result = await api.adminUpload(file, form.name || 'dog')
+        const result = await adminUpload(file, form.name || 'dog')
         newImages.push({ _type: 'image', _key: genKey(), asset: { _type: 'reference', _ref: result._id } })
       } catch (err: any) { showToast(`Failed: ${file.name}`, 'error') }
     }
@@ -416,39 +439,57 @@ export default function ManagePage() {
     setUploadingGallery(false)
   }
 
-  const removeGalleryImage = (key: string) => {
-    setForm(f => ({ ...f, gallery: f.gallery.filter((img: any) => img._key !== key) }))
+  const removeGalleryImage = (key: string) => { setForm(f => ({ ...f, gallery: f.gallery.filter((img: any) => img._key !== key) })) }
+
+  const moveGalleryImage = (key: string, dir: 'up' | 'down') => {
+    setForm(f => {
+      const arr = [...f.gallery]
+      const idx = arr.findIndex((img: any) => img._key === key)
+      if (idx < 0) return f
+      const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= arr.length) return f
+      ;[arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]]
+      return { ...f, gallery: arr }
+    })
   }
 
-  // ─── Settings save ───────────────────────────────────────────────────────
+  const setAsMainImage = (galleryImg: any) => {
+    setForm(f => {
+      const newGallery = f.gallery.filter((img: any) => img._key !== galleryImg._key)
+      if (f.mainImage) {
+        newGallery.unshift({ ...f.mainImage, _key: genKey() })
+      }
+      return { ...f, mainImage: { _type: 'image', asset: galleryImg.asset }, gallery: newGallery }
+    })
+    showToast('Main photo swapped')
+  }
+
+  // Settings save
   const saveSettings = async () => {
     setSettingsSaving(true)
     try {
       const { _id, _type, _createdAt, _updatedAt, _rev, ...payload } = settingsData
-      await api.adminPost('/api/go/settings', { action: 'update', payload })
+      await adminPost('/api/go/settings', { action: 'update', payload })
       showToast('Settings saved')
     } catch (err: any) { showToast(err.message, 'error') }
     finally { setSettingsSaving(false) }
   }
 
-  // ─── Helpers ─────────────────────────────────────────────────────────────
+  // ─── Computed values ─────────────────────────────────────────────────────
   const inputCls = 'w-full bg-[#0a0a0a] border border-white/10 rounded-lg px-4 py-3 text-white font-body focus:border-gold/40 focus:outline-none placeholder:text-white/15 transition-colors'
-
   const featuredCount = dogs.filter(d => d.featured).length
   const availableCount = dogs.filter(d => d.status === 'available').length
   const reservedCount = dogs.filter(d => d.status === 'reserved').length
-  const soldCount = dogs.filter(d => d.status === 'sold').length
   const filtered = dogs.filter(dog => {
     const matchSearch = !searchQuery || dog.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchStatus = statusFilter === 'all' || dog.status === statusFilter
     return matchSearch && matchStatus
   })
+  const varieties = VARIETY_MAP[form.breed] || VARIETY_MAP['American Bully'] || []
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDER
+  // AUTH SCREENS
   // ═══════════════════════════════════════════════════════════════════════════
-
-  // Auth check
   if (authState === 'checking') return (
     <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center">
       <div className="text-gold animate-pulse font-display text-lg">Loading...</div>
@@ -471,25 +512,22 @@ export default function ManagePage() {
         <button type="submit" disabled={authLoading || !passwordInput} className="w-full py-3 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">
           {authLoading ? 'Verifying...' : 'Sign In'}
         </button>
-        <Link href="/go" className="block text-center text-white/30 text-xs font-heading hover:text-gold transition-colors">
-          Back to Command Center
-        </Link>
+        <Link href="/go" className="block text-center text-white/30 text-xs font-heading hover:text-gold transition-colors">Back to Command Center</Link>
       </form>
     </div>
   )
 
-  // ─── Tab label for mobile header ─────────────────────────────────────────
   const tabLabel = navItems.find(n => n.id === activeTab)?.label || 'Admin'
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // AUTHENTICATED — FULL ADMIN SHELL
+  // MAIN ADMIN SHELL
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] overflow-hidden">
       <style>{`
-        .ct-admin { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+        .ct-admin { display: grid; grid-template-columns: 260px 1fr; height: 100vh; overflow: hidden; }
         .ct-sidebar { background: #0e0e0e; border-right: 1px solid rgba(208,185,112,0.08); overflow-y: auto; }
-        .ct-main { overflow-y: auto; background: #0a0a0a; }
+        .ct-main { overflow-y: auto; -webkit-overflow-scrolling: touch; }
         @media (max-width: 900px) {
           .ct-admin { grid-template-columns: 1fr; }
           .ct-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 280px; z-index: 100; transform: translateX(-100%); transition: transform 0.3s ease; }
@@ -514,17 +552,13 @@ export default function ManagePage() {
         @media (max-width: 900px) { .ct-overlay.open { display: block; } }
       `}</style>
 
-      {/* Toasts */}
       {toasts.map(t => <Toast key={t.id} toast={t} onDismiss={() => setToasts(prev => prev.filter(x => x.id !== t.id))} />)}
-
-      {/* Mobile overlay */}
       <div className={`ct-overlay ${sidebarOpen ? 'open' : ''}`} onClick={() => setSidebarOpen(false)} />
 
       <div className="ct-admin">
-        {/* ─── SIDEBAR ───────────────────────────────────────────────────── */}
+        {/* SIDEBAR */}
         <aside className={`ct-sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="p-5">
-            {/* Logo */}
             <Link href="/" target="_blank" className="flex items-center gap-3 mb-2 group">
               <div className="w-10 h-10 rounded-xl bg-gold/10 border border-gold/20 flex items-center justify-center group-hover:bg-gold/20 transition-colors">
                 <span className="font-display text-gold text-sm font-bold">CT</span>
@@ -537,187 +571,101 @@ export default function ManagePage() {
             <div className="ml-[52px] mb-6">
               <span className="text-[9px] tracking-[0.2em] uppercase font-heading px-2 py-0.5 rounded-full border border-gold/20 bg-gold/5 text-gold/70">Admin Dashboard</span>
             </div>
-
-            {/* Nav */}
             <nav className="space-y-1">
               {navItems.map(item => (
-                <button key={item.id} onClick={() => switchTab(item.id)}
-                  className={`ct-nav-item w-full font-heading ${activeTab === item.id ? 'active' : ''}`}>
+                <button key={item.id} onClick={() => switchTab(item.id)} className={`ct-nav-item w-full font-heading ${activeTab === item.id ? 'active' : ''}`}>
                   <span className="ct-nav-icon">{icons[item.icon]}</span>
                   <span>{item.label}</span>
-                  {item.badge && dogs.length > 0 && (
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>
-                  )}
-                  {item.comingSoon && (
-                    <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 font-heading uppercase tracking-wider">Soon</span>
-                  )}
+                  {item.badge && dogs.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>}
+                  {item.comingSoon && <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 font-heading uppercase tracking-wider">Soon</span>}
                   {!item.badge && !item.comingSoon && <span className="ct-indicator" />}
                 </button>
               ))}
-
-              {/* Separator */}
               <div className="my-4 border-t border-white/5" />
-
-              {/* Checklist link */}
-              <Link href="/go" onClick={() => setSidebarOpen(false)}
-                className="ct-nav-item w-full font-heading">
-                <span className="ct-nav-icon">{icons.checklist}</span>
-                <span>Setup Checklist</span>
-                <span className="ct-nav-icon ml-auto">{icons.external}</span>
+              <Link href="/go" onClick={() => setSidebarOpen(false)} className="ct-nav-item w-full font-heading">
+                <span className="ct-nav-icon">{icons.checklist}</span><span>Setup Checklist</span><span className="ct-nav-icon ml-auto">{icons.external}</span>
               </Link>
-
-              {/* View site */}
-              <Link href="/" target="_blank"
-                className="ct-nav-item w-full font-heading">
-                <span className="ct-nav-icon">{icons.external}</span>
-                <span>View Live Site</span>
+              <Link href="/" target="_blank" className="ct-nav-item w-full font-heading">
+                <span className="ct-nav-icon">{icons.external}</span><span>View Live Site</span>
               </Link>
             </nav>
           </div>
-
-          {/* Admin user badge at bottom */}
           <div className="mt-auto p-5 border-t border-white/5">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center">
-                <span className="text-gold text-xs font-heading">A</span>
-              </div>
-              <div>
-                <p className="text-white text-sm font-heading">Admin</p>
-                <p className="text-gold/40 text-[10px] font-heading">Crunchtyme Bullies</p>
-              </div>
+              <div className="w-9 h-9 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center"><span className="text-gold text-xs font-heading">A</span></div>
+              <div><p className="text-white text-sm font-heading">Admin</p><p className="text-gold/40 text-[10px] font-heading">Crunchtyme Bullies</p></div>
             </div>
           </div>
         </aside>
 
-        {/* ─── MAIN CONTENT ──────────────────────────────────────────────── */}
+        {/* MAIN CONTENT */}
         <div className="ct-main">
-          {/* Mobile header */}
           <div className="ct-mobile-header">
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white/50 hover:text-gold transition-colors">
-              {sidebarOpen ? icons.close : icons.menu}
-            </button>
-            {activeTab === 'dogs' && dogView === 'form' ? (
-              <button onClick={() => { setDogView('list'); setEditingDog(null) }} className="text-white/50 hover:text-gold transition-colors">
-                {icons.back}
-              </button>
-            ) : null}
-            <h1 className="text-white font-display text-lg flex-1">{tabLabel}</h1>
-            <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center">
-              <span className="text-gold text-[10px] font-heading">CT</span>
-            </div>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white/50 hover:text-gold transition-colors">{sidebarOpen ? icons.close : icons.menu}</button>
+            {activeTab === 'dogs' && dogView === 'form' && <button onClick={() => { setDogView('list'); setEditingDog(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
+            <h1 className="text-white font-display text-lg flex-1">{activeTab === 'dogs' && dogView === 'form' ? (editingDog ? 'Edit Dog' : 'Add Dog') : tabLabel}</h1>
+            <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center"><span className="text-gold text-[10px] font-heading">CT</span></div>
           </div>
 
-          {/* Content area */}
           <div className="p-4 md:p-8 max-w-5xl">
-            {/* ──── OVERVIEW TAB ──────────────────────────────────────── */}
+
+            {/* OVERVIEW */}
             {activeTab === 'overview' && (
               <div className="space-y-6">
-                <div>
-                  <h1 className="text-2xl md:text-3xl font-display text-white mb-1">Welcome back</h1>
-                  <p className="text-white/40 font-body text-sm">Here&apos;s what&apos;s happening with your kennel.</p>
-                </div>
-
-                {/* Quick stats */}
+                <div><h1 className="text-2xl md:text-3xl font-display text-white mb-1">Welcome back</h1><p className="text-white/40 font-body text-sm">Here&apos;s what&apos;s happening with your kennel.</p></div>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {[
-                    { label: 'Total Dogs', value: dogs.length, color: 'text-gold' },
-                    { label: 'Available', value: availableCount, color: 'text-emerald-400' },
-                    { label: 'Reserved', value: reservedCount, color: 'text-amber-400' },
-                    { label: 'On Homepage', value: featuredCount, color: 'text-blue-400' },
-                  ].map(stat => (
+                  {[{ label: 'Total Dogs', value: dogs.length, color: 'text-gold' }, { label: 'Available', value: availableCount, color: 'text-emerald-400' }, { label: 'Reserved', value: reservedCount, color: 'text-amber-400' }, { label: 'On Homepage', value: featuredCount, color: 'text-blue-400' }].map(stat => (
                     <div key={stat.label} className="p-4 rounded-xl bg-[#111] border border-white/5">
                       <p className="text-white/35 text-xs font-heading uppercase tracking-wider">{stat.label}</p>
                       <p className={`text-2xl font-display mt-1 ${stat.color}`}>{loading ? '-' : stat.value}</p>
                     </div>
                   ))}
                 </div>
-
-                {/* Quick actions */}
                 <div>
                   <h3 className="text-white/50 text-xs font-heading uppercase tracking-wider mb-3">Quick Actions</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <button onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }, 50) }}
-                      className="p-4 rounded-xl bg-gold/10 border border-gold/20 hover:bg-gold/15 transition-colors text-left group">
-                      <div className="text-gold mb-2">{icons.plus}</div>
-                      <p className="text-white text-sm font-heading">Add Dog</p>
-                    </button>
-                    <button onClick={() => switchTab('dogs')}
-                      className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors text-left">
-                      <div className="text-emerald-400 mb-2">{icons.dogs}</div>
-                      <p className="text-white text-sm font-heading">Manage Dogs</p>
-                    </button>
-                    <button onClick={() => switchTab('settings')}
-                      className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 transition-colors text-left">
-                      <div className="text-blue-400 mb-2">{icons.settings}</div>
-                      <p className="text-white text-sm font-heading">Settings</p>
-                    </button>
-                    <Link href="/go" className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors text-left">
-                      <div className="text-purple-400 mb-2">{icons.checklist}</div>
-                      <p className="text-white text-sm font-heading">Checklist</p>
-                    </Link>
+                    <button onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }, 50) }} className="p-4 rounded-xl bg-gold/10 border border-gold/20 hover:bg-gold/15 transition-colors text-left"><div className="text-gold mb-2">{icons.plus}</div><p className="text-white text-sm font-heading">Add Dog</p></button>
+                    <button onClick={() => switchTab('dogs')} className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors text-left"><div className="text-emerald-400 mb-2">{icons.dogs}</div><p className="text-white text-sm font-heading">Manage Dogs</p></button>
+                    <button onClick={() => switchTab('settings')} className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 transition-colors text-left"><div className="text-blue-400 mb-2">{icons.settings}</div><p className="text-white text-sm font-heading">Settings</p></button>
+                    <Link href="/go" className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors text-left"><div className="text-purple-400 mb-2">{icons.checklist}</div><p className="text-white text-sm font-heading">Checklist</p></Link>
                   </div>
                 </div>
-
-                {/* Nav grid (JHPS style) */}
                 <div>
                   <h3 className="text-white/50 text-xs font-heading uppercase tracking-wider mb-3">All Sections</h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {navItems.filter(n => n.id !== 'overview').map(item => (
-                      <button key={item.id} onClick={() => switchTab(item.id)}
-                        className="p-4 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors text-left group relative overflow-hidden">
+                      <button key={item.id} onClick={() => switchTab(item.id)} className="p-4 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors text-left group relative overflow-hidden">
                         <div className="text-white/30 group-hover:text-gold/60 transition-colors mb-2">{icons[item.icon]}</div>
                         <p className="text-white text-sm font-heading">{item.label}</p>
-                        {item.comingSoon && (
-                          <span className="absolute top-3 right-3 text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 font-heading uppercase tracking-wider">Soon</span>
-                        )}
-                        {item.id === 'dogs' && dogs.length > 0 && (
-                          <span className="absolute top-3 right-3 text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>
-                        )}
+                        {item.comingSoon && <span className="absolute top-3 right-3 text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 font-heading uppercase tracking-wider">Soon</span>}
                       </button>
                     ))}
                   </div>
                 </div>
-
-                {/* Recent dogs */}
                 {dogs.length > 0 && (
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-white/50 text-xs font-heading uppercase tracking-wider">Recent Dogs</h3>
-                      <button onClick={() => switchTab('dogs')} className="text-gold/50 text-xs font-heading hover:text-gold transition-colors">View All</button>
-                    </div>
-                    <div className="space-y-2">
-                      {dogs.slice(0, 5).map(dog => (
-                        <div key={dog._id} onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }, 50) }}
-                          className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 cursor-pointer transition-colors">
-                          <div className="w-10 h-10 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
-                            {getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-white text-sm font-heading truncate">{dog.name}</p>
-                            <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${statusColors[dog.status] || statusColors.available}`}>{dog.status}</span>
-                          </div>
-                          <span className="text-white/20 text-xs font-body">{dog.price ? `$${dog.price.toLocaleString()}` : 'Contact'}</span>
-                        </div>
-                      ))}
-                    </div>
+                    <div className="flex items-center justify-between mb-3"><h3 className="text-white/50 text-xs font-heading uppercase tracking-wider">Recent Dogs</h3><button onClick={() => switchTab('dogs')} className="text-gold/50 text-xs font-heading hover:text-gold transition-colors">View All</button></div>
+                    <div className="space-y-2">{dogs.slice(0, 5).map(dog => (
+                      <div key={dog._id} onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }, 50) }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 cursor-pointer transition-colors">
+                        <div className="w-10 h-10 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">{getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}</div>
+                        <div className="flex-1 min-w-0"><p className="text-white text-sm font-heading truncate">{dog.name}</p><span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${statusColors[dog.status] || statusColors.available}`}>{dog.status}</span></div>
+                        <span className="text-white/20 text-xs font-body">{dog.price ? `$${dog.price.toLocaleString()}` : 'Contact'}</span>
+                      </div>
+                    ))}</div>
                   </div>
                 )}
               </div>
             )}
 
-            {/* ──── DOGS TAB ─────────────────────────────────────────── */}
+            {/* DOG FORM */}
             {activeTab === 'dogs' && dogView === 'form' && (
-              <div className="max-w-lg mx-auto space-y-5">
-                <button onClick={() => { setDogView('list'); setEditingDog(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1">
-                  <span className="inline-block">{icons.back}</span> Back to list
-                </button>
-                <h2 className="text-white text-xl font-display">{editingDog ? 'Edit Dog' : 'Add New Dog'}</h2>
+              <div className="max-w-lg mx-auto space-y-5 pb-8">
+                <button onClick={() => { setDogView('list'); setEditingDog(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1"><span>{icons.back}</span> Back to list</button>
+                <h2 className="text-white text-xl font-display hidden md:block">{editingDog ? 'Edit Dog' : 'Add New Dog'}</h2>
 
                 {/* Name */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Name *</label>
-                  <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. King Apollo" className={inputCls} />
-                </div>
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Name *</label>
+                <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="e.g. King Apollo" className={inputCls} /></div>
 
                 {/* Main Photo */}
                 <div>
@@ -726,10 +674,7 @@ export default function ManagePage() {
                     <div className="relative w-32 h-32 rounded-lg overflow-hidden bg-[#0a0a0a] border border-white/10 group">
                       <img src={getImageUrl(form.mainImage)} alt="Main" className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                        <label className="cursor-pointer text-gold text-xs font-heading">
-                          Change
-                          <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadMainImage(e.target.files[0])} />
-                        </label>
+                        <label className="cursor-pointer text-gold text-xs font-heading">Change<input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadMainImage(e.target.files[0])} /></label>
                       </div>
                     </div>
                   ) : (
@@ -740,15 +685,25 @@ export default function ManagePage() {
                   )}
                 </div>
 
-                {/* Gallery */}
+                {/* Gallery with reorder */}
                 <div>
                   <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Gallery Photos {form.gallery.length > 0 && <span className="text-white/20">({form.gallery.length})</span>}</label>
                   {form.gallery.length > 0 && (
-                    <div className="flex gap-2 overflow-x-auto pb-2 mb-2">
+                    <div className="space-y-2 mb-3">
                       {form.gallery.map((img: any, i: number) => (
-                        <div key={img._key || i} className="relative shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-[#0a0a0a] border border-white/10 group">
-                          <img src={getImageUrl(img)} alt={`Gallery ${i + 1}`} className="w-full h-full object-cover" />
-                          <button type="button" onClick={() => removeGalleryImage(img._key)} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                        <div key={img._key || i} className="flex items-center gap-2 p-2 rounded-lg bg-[#111] border border-white/5">
+                          <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#0a0a0a] shrink-0 border border-white/5">
+                            <img src={getImageUrl(img)} alt={`#${i + 1}`} className="w-full h-full object-cover" />
+                          </div>
+                          <span className="text-white/30 text-xs font-heading w-6 text-center shrink-0">#{i + 1}</span>
+                          <div className="flex flex-col gap-0.5 shrink-0">
+                            <button type="button" onClick={() => moveGalleryImage(img._key, 'up')} disabled={i === 0} className="text-white/30 hover:text-gold disabled:opacity-20 transition-colors">{icons.up}</button>
+                            <button type="button" onClick={() => moveGalleryImage(img._key, 'down')} disabled={i === form.gallery.length - 1} className="text-white/30 hover:text-gold disabled:opacity-20 transition-colors">{icons.down}</button>
+                          </div>
+                          <div className="flex gap-1.5 ml-auto shrink-0">
+                            <button type="button" onClick={() => setAsMainImage(img)} className="px-2 py-1 rounded text-[10px] font-heading border border-gold/20 text-gold/60 hover:bg-gold/10 transition-colors">Set Main</button>
+                            <button type="button" onClick={() => removeGalleryImage(img._key)} className="px-2 py-1 rounded text-[10px] font-heading border border-red-500/20 text-red-400/60 hover:bg-red-500/10 transition-colors">Remove</button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -759,97 +714,72 @@ export default function ManagePage() {
                   </label>
                 </div>
 
-                {/* Breed + Variety */}
+                {/* Breed (combo dropdown) + Variety */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Breed</label>
-                    <input type="text" value={form.breed} onChange={e => setForm(f => ({ ...f, breed: e.target.value }))} className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Variety</label>
-                    <select value={form.variety} onChange={e => setForm(f => ({ ...f, variety: e.target.value }))} className={`${inputCls} [color-scheme:dark]`}>
-                      <option value="">Select...</option>
-                      {VARIETIES.map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Breed</label>
+                  <ComboSelect value={form.breed} onChange={v => setForm(f => ({ ...f, breed: v, variety: '' }))} options={BREEDS} placeholder="Select breed..." /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Variety / Class</label>
+                  <ComboSelect value={form.variety} onChange={v => setForm(f => ({ ...f, variety: v }))} options={varieties} placeholder="Select..." /></div>
                 </div>
 
                 {/* Gender */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Gender</label>
-                  <div className="flex gap-2">
-                    {['male', 'female'].map(g => (
-                      <button key={g} type="button" onClick={() => setForm(f => ({ ...f, gender: f.gender === g ? '' : g }))}
-                        className={`flex-1 py-2.5 rounded-lg border text-sm font-heading capitalize transition-colors ${form.gender === g ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/40 hover:text-white/60'}`}>
-                        {g}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Gender</label>
+                <div className="flex gap-2">{['male', 'female'].map(g => (
+                  <button key={g} type="button" onClick={() => setForm(f => ({ ...f, gender: f.gender === g ? '' : g }))}
+                    className={`flex-1 py-2.5 rounded-lg border text-sm font-heading capitalize transition-colors ${form.gender === g ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/40 hover:text-white/60'}`}>{g}</button>
+                ))}</div></div>
 
-                {/* DOB + Color */}
+                {/* DOB + Color (combo dropdown) */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Date of Birth</label>
-                    <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} />
-                  </div>
-                  <div>
-                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Color</label>
-                    <input type="text" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} placeholder="Blue Fawn" className={inputCls} />
-                  </div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Date of Birth</label>
+                  <input type="date" value={form.dob} onChange={e => setForm(f => ({ ...f, dob: e.target.value }))} className={`${inputCls} [color-scheme:dark]`} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Color / Pattern</label>
+                  <ComboSelect value={form.color} onChange={v => setForm(f => ({ ...f, color: v }))} options={COLORS} placeholder="Select color..." /></div>
                 </div>
 
                 {/* Weight + Height */}
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Weight</label>
-                    <input type="text" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder="65 lbs" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Height</label>
-                    <input type="text" value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))} placeholder="17 inches" className={inputCls} />
-                  </div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Weight</label>
+                  <input type="text" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} placeholder="65 lbs" className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Height</label>
+                  <input type="text" value={form.height} onChange={e => setForm(f => ({ ...f, height: e.target.value }))} placeholder="17 inches" className={inputCls} /></div>
                 </div>
 
                 {/* Price */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Price</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">$</span>
-                    <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="Leave blank for Contact Us"
-                      className={`${inputCls} pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
-                  </div>
-                </div>
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Price</label>
+                <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30">$</span>
+                <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="Leave blank for Contact Us"
+                  className={`${inputCls} pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} /></div></div>
 
                 {/* Status */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Status</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {STATUSES.map(s => (
-                      <button key={s} type="button" onClick={() => setForm(f => ({ ...f, status: s }))}
-                        className={`py-2 rounded-lg border text-xs font-heading capitalize transition-colors ${form.status === s ? statusColors[s] || '' : 'border-white/10 text-white/30 hover:text-white/50'}`}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Status</label>
+                <div className="grid grid-cols-4 gap-2">{STATUSES.map(s => (
+                  <button key={s} type="button" onClick={() => setForm(f => ({ ...f, status: s }))}
+                    className={`py-2 rounded-lg border text-[11px] font-heading capitalize transition-colors ${form.status === s ? statusColors[s] || '' : 'border-white/10 text-white/30 hover:text-white/50'}`}>{s.replace('-', ' ')}</button>
+                ))}</div></div>
 
                 {/* Featured Toggle */}
                 <div className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="text-white text-sm font-heading">Show on Homepage</p>
-                    <p className="text-white/30 text-xs font-body">Featured dogs appear on the main page</p>
-                  </div>
+                  <div><p className="text-white text-sm font-heading">Show on Homepage</p><p className="text-white/30 text-xs font-body">Featured dogs appear on the main page</p></div>
                   <button type="button" onClick={() => setForm(f => ({ ...f, featured: !f.featured }))}
                     className={`relative w-12 h-7 rounded-full transition-colors ${form.featured ? 'bg-gold' : 'bg-white/10'}`}>
-                    <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.featured ? 'left-6' : 'left-1'}`} />
-                  </button>
+                    <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.featured ? 'left-6' : 'left-1'}`} /></button>
                 </div>
 
+                {/* Description */}
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Description</label>
+                <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Full description of this dog — background, training, what makes them special..." rows={4} className={`${inputCls} resize-none`} /></div>
+
                 {/* Personality */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Personality / Temperament</label>
-                  <textarea value={form.personality} onChange={e => setForm(f => ({ ...f, personality: e.target.value }))} placeholder="Friendly, energetic, great with kids..." rows={3} className={`${inputCls} resize-none`} />
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Personality / Temperament</label>
+                <textarea value={form.personality} onChange={e => setForm(f => ({ ...f, personality: e.target.value }))} placeholder="Friendly, energetic, great with kids..." rows={2} className={`${inputCls} resize-none`} /></div>
+
+                {/* Registry (combo dropdown) + Reg Number */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Registry</label>
+                  <ComboSelect value={form.registry} onChange={v => setForm(f => ({ ...f, registry: v }))} options={REGISTRIES} placeholder="Select..." /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Reg. Number</label>
+                  <input type="text" value={form.registrationNumber} onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))} placeholder="Registration #" className={inputCls} /></div>
                 </div>
 
                 {/* Breeding Info */}
@@ -861,147 +791,84 @@ export default function ManagePage() {
                       <div><label className="text-white/30 text-xs font-heading block mb-1">Dam (Mother)</label><input type="text" value={form.dam} onChange={e => setForm(f => ({ ...f, dam: e.target.value }))} className={inputCls} /></div>
                     </div>
                     <div><label className="text-white/30 text-xs font-heading block mb-1">Bloodline</label><input type="text" value={form.bloodline} onChange={e => setForm(f => ({ ...f, bloodline: e.target.value }))} placeholder="Razors Edge, Gottiline..." className={inputCls} /></div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><label className="text-white/30 text-xs font-heading block mb-1">Registry</label><input type="text" value={form.registry} onChange={e => setForm(f => ({ ...f, registry: e.target.value }))} placeholder="ABKC, UKC..." className={inputCls} /></div>
-                      <div><label className="text-white/30 text-xs font-heading block mb-1">Reg. Number</label><input type="text" value={form.registrationNumber} onChange={e => setForm(f => ({ ...f, registrationNumber: e.target.value }))} className={inputCls} /></div>
-                    </div>
                   </div>
                 </details>
 
                 {/* Save */}
                 <button onClick={handleSave} disabled={saving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors text-base disabled:opacity-50">
-                  {saving ? 'Saving...' : editingDog ? 'Save Changes' : 'Add Dog'}
-                </button>
+                  {saving ? 'Saving...' : editingDog ? 'Save Changes' : 'Add Dog'}</button>
 
-                {/* Delete */}
-                {editingDog && (
-                  <button onClick={() => setShowDelete(true)} disabled={saving}
-                    className="w-full py-3 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors text-sm font-heading">
-                    Delete {editingDog.name}
-                  </button>
-                )}
+                {editingDog && <button onClick={() => setShowDelete(true)} disabled={saving} className="w-full py-3 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors text-sm font-heading">Delete {editingDog.name}</button>}
                 {showDelete && editingDog && <ConfirmModal title={`Delete ${editingDog.name}?`} message="This permanently removes this dog from the site." onConfirm={handleDeleteDog} onCancel={() => setShowDelete(false)} />}
               </div>
             )}
 
+            {/* DOG LIST */}
             {activeTab === 'dogs' && dogView === 'list' && (
               <div className="space-y-4">
-                {/* Header */}
                 <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-white text-xl font-display">Dogs <span className="text-white/30 text-sm font-body">({dogs.length})</span></h2>
-                    {featuredCount > 0 && <p className="text-gold/50 text-xs font-heading mt-0.5">{featuredCount} on homepage</p>}
-                  </div>
-                  <button onClick={() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }}
-                    className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
+                  <div><h2 className="text-white text-xl font-display">Dogs <span className="text-white/30 text-sm font-body">({dogs.length})</span></h2>
+                  {featuredCount > 0 && <p className="text-gold/50 text-xs font-heading mt-0.5">{featuredCount} on homepage</p>}</div>
+                  <button onClick={() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
                 </div>
-
-                {/* Search + Filter */}
                 {dogs.length > 3 && (
                   <div className="flex gap-2">
-                    <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..."
-                      className={`flex-1 ${inputCls} py-2 text-sm`} />
+                    <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search..." className={`flex-1 ${inputCls} py-2 text-sm`} />
                     <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className={`${inputCls} w-auto py-2 text-sm [color-scheme:dark]`}>
-                      <option value="all">All</option>
-                      {STATUSES.map(s => <option key={s} value={s} className="capitalize">{s}</option>)}
+                      <option value="all">All</option>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                 )}
-
-                {/* Dog list */}
-                {loading ? (
-                  <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading dogs...</div></div>
-                ) : filtered.length === 0 ? (
-                  <p className="text-white/30 text-center py-12 font-body">{dogs.length === 0 ? 'No dogs yet. Tap + to add one.' : 'No dogs match your filter.'}</p>
-                ) : (
-                  filtered.map(dog => (
-                    <div key={dog._id} onClick={() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }}
-                      className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
-                      <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
-                        {getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-heading truncate">{dog.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <button onClick={e => { e.stopPropagation(); cycleStatus(dog) }}>
-                            <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${statusColors[dog.status] || statusColors.available}`}>{dog.status}</span>
-                          </button>
-                          <span className="text-white/25 text-xs font-body">{dog.price ? `$${dog.price.toLocaleString()}` : 'Contact'}</span>
-                        </div>
-                      </div>
-                      <button onClick={e => { e.stopPropagation(); toggleFeatured(dog) }} className="shrink-0 transition-transform hover:scale-110 active:scale-95"
-                        title={dog.featured ? 'Remove from homepage' : 'Add to homepage'}>
-                        <span className={dog.featured ? 'text-gold' : 'text-white/20'}>{dog.featured ? icons.star : icons.starOutline}</span>
-                      </button>
-                    </div>
-                  ))
-                )}
+                {loading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading dogs...</div></div>
+                : filtered.length === 0 ? <p className="text-white/30 text-center py-12 font-body">{dogs.length === 0 ? 'No dogs yet. Tap + to add one.' : 'No dogs match your filter.'}</p>
+                : filtered.map(dog => (
+                  <div key={dog._id} onClick={() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
+                    <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
+                      {getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}</div>
+                    <div className="flex-1 min-w-0"><p className="text-white font-heading truncate">{dog.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <button onClick={e => { e.stopPropagation(); cycleStatus(dog) }}><span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${statusColors[dog.status] || statusColors.available}`}>{dog.status}</span></button>
+                      <span className="text-white/25 text-xs font-body">{dog.price ? `$${dog.price.toLocaleString()}` : 'Contact'}</span>
+                    </div></div>
+                    <button onClick={e => { e.stopPropagation(); toggleFeatured(dog) }} className="shrink-0 transition-transform hover:scale-110 active:scale-95" title={dog.featured ? 'Remove from homepage' : 'Add to homepage'}>
+                      <span className={dog.featured ? 'text-gold' : 'text-white/20'}>{dog.featured ? icons.star : icons.starOutline}</span></button>
+                  </div>
+                ))}
               </div>
             )}
 
-            {/* ──── SETTINGS TAB ──────────────────────────────────────── */}
+            {/* SETTINGS */}
             {activeTab === 'settings' && (
               <div className="max-w-lg space-y-6">
-                <div>
-                  <h2 className="text-white text-xl font-display mb-1">Site Settings</h2>
-                  <p className="text-white/40 text-sm font-body">Update your site name, contact info, and more.</p>
-                </div>
-
-                {settingsLoading ? (
-                  <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading settings...</div></div>
-                ) : (
-                  <>
-                    <div>
-                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Site Title</label>
-                      <input type="text" value={settingsData.title || ''} onChange={e => setSettingsData(d => ({ ...d, title: e.target.value }))} placeholder="CrunchTyme Bullies" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Tagline</label>
-                      <input type="text" value={settingsData.tagline || ''} onChange={e => setSettingsData(d => ({ ...d, tagline: e.target.value }))} placeholder="Premium American Bullies" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Description</label>
-                      <textarea value={settingsData.description || ''} onChange={e => setSettingsData(d => ({ ...d, description: e.target.value }))} rows={3} placeholder="Brief description of your kennel..." className={`${inputCls} resize-none`} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Phone</label>
-                        <input type="tel" value={settingsData.phone || ''} onChange={e => setSettingsData(d => ({ ...d, phone: e.target.value }))} placeholder="(555) 123-4567" className={inputCls} />
-                      </div>
-                      <div>
-                        <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Email</label>
-                        <input type="email" value={settingsData.email || ''} onChange={e => setSettingsData(d => ({ ...d, email: e.target.value }))} placeholder="info@crunchtymebullies.com" className={inputCls} />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Address</label>
-                      <input type="text" value={settingsData.address || ''} onChange={e => setSettingsData(d => ({ ...d, address: e.target.value }))} placeholder="City, State" className={inputCls} />
-                    </div>
-
-                    {/* Social Links */}
-                    <div>
-                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Social Media</label>
-                      <div className="space-y-3">
-                        {['instagram', 'facebook', 'tiktok', 'youtube'].map(platform => (
-                          <div key={platform} className="flex items-center gap-3">
-                            <span className="text-white/30 text-xs font-heading capitalize w-20">{platform}</span>
-                            <input type="text" value={settingsData.socialLinks?.[platform] || ''} onChange={e => setSettingsData(d => ({
-                              ...d, socialLinks: { ...d.socialLinks, [platform]: e.target.value }
-                            }))} placeholder={`${platform} URL`} className={`flex-1 ${inputCls} py-2 text-sm`} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <button onClick={saveSettings} disabled={settingsSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">
-                      {settingsSaving ? 'Saving...' : 'Save Settings'}
-                    </button>
-                  </>
-                )}
+                <div><h2 className="text-white text-xl font-display mb-1">Site Settings</h2><p className="text-white/40 text-sm font-body">Update your site name, contact info, and more.</p></div>
+                {settingsLoading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading settings...</div></div> : (<>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Site Title</label>
+                  <input type="text" value={settingsData.title || ''} onChange={e => setSettingsData(d => ({ ...d, title: e.target.value }))} placeholder="CrunchTyme Bullies" className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Tagline</label>
+                  <input type="text" value={settingsData.tagline || ''} onChange={e => setSettingsData(d => ({ ...d, tagline: e.target.value }))} placeholder="Premium American Bullies" className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Description</label>
+                  <textarea value={settingsData.description || ''} onChange={e => setSettingsData(d => ({ ...d, description: e.target.value }))} rows={3} placeholder="Brief description of your kennel..." className={`${inputCls} resize-none`} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Phone</label>
+                    <input type="tel" value={settingsData.phone || ''} onChange={e => setSettingsData(d => ({ ...d, phone: e.target.value }))} placeholder="(555) 123-4567" className={inputCls} /></div>
+                    <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Email</label>
+                    <input type="email" value={settingsData.email || ''} onChange={e => setSettingsData(d => ({ ...d, email: e.target.value }))} placeholder="info@crunchtymebullies.com" className={inputCls} /></div>
+                  </div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Address</label>
+                  <input type="text" value={settingsData.address || ''} onChange={e => setSettingsData(d => ({ ...d, address: e.target.value }))} placeholder="City, State" className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Social Media</label>
+                  <div className="space-y-3">{['instagram', 'facebook', 'tiktok', 'youtube'].map(platform => (
+                    <div key={platform} className="flex items-center gap-3"><span className="text-white/30 text-xs font-heading capitalize w-20">{platform}</span>
+                    <input type="text" value={settingsData.socialLinks?.[platform] || ''} onChange={e => setSettingsData(d => ({ ...d, socialLinks: { ...d.socialLinks, [platform]: e.target.value } }))} placeholder={`${platform} URL`} className={`flex-1 ${inputCls} py-2 text-sm`} /></div>
+                  ))}</div></div>
+                  <button onClick={saveSettings} disabled={settingsSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">
+                    {settingsSaving ? 'Saving...' : 'Save Settings'}</button>
+                </>)}
               </div>
             )}
 
-            {/* ──── COMING SOON TABS ─────────────────────────────────── */}
+            {/* COMING SOON TABS */}
             {activeTab === 'store' && <ComingSoon title="Store & Products" description="Manage your Printful merch, accessories, and supplements. Connect your inventory and set pricing." icon="store" />}
             {activeTab === 'customers' && <ComingSoon title="Customer Management" description="Track buyers, manage inquiries, view purchase history, and build your client relationships." icon="customers" />}
             {activeTab === 'payments' && <ComingSoon title="Payments" description="Accept deposits, process payments with Stripe, track revenue, and manage payment history." icon="payments" />}
@@ -1011,14 +878,12 @@ export default function ManagePage() {
         </div>
       </div>
 
-      {/* ─── MOBILE BOTTOM NAV ──────────────────────────────────────────── */}
+      {/* MOBILE BOTTOM NAV */}
       <div className="ct-mobile-nav">
         {mobileNavItems.map(item => (
-          <button key={item.id}
-            onClick={() => item.id === 'more' ? setSidebarOpen(true) : switchTab(item.id as Tab)}
+          <button key={item.id} onClick={() => item.id === 'more' ? setSidebarOpen(true) : switchTab(item.id as Tab)}
             className={`ct-mobile-btn font-heading ${item.id !== 'more' && activeTab === item.id ? 'active' : ''}`}>
-            {icons[item.icon]}
-            <span>{item.label}</span>
+            {icons[item.icon]}<span>{item.label}</span>
           </button>
         ))}
       </div>
