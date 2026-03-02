@@ -114,6 +114,21 @@ export default function GoDashboard() {
         </p>
       </div>
 
+      {/* Quick Actions */}
+      <Link href="/go/manage"
+        className="group mb-10 block p-5 rounded-xl border-2 border-gold/30 bg-gradient-to-r from-gold/5 to-transparent hover:border-gold/50 hover:from-gold/10 transition-all duration-300">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gold/15 flex items-center justify-center group-hover:bg-gold/25 transition-colors">
+            <Zap size={26} className="text-gold" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-display text-lg text-gold group-hover:text-gold-light transition-colors">Manage Dogs</h3>
+            <p className="text-white/40 font-body text-sm mt-0.5">Add, edit, and manage your dogs — photos, prices, homepage, and more</p>
+          </div>
+          <ChevronRight size={20} className="text-gold/40 group-hover:text-gold group-hover:translate-x-1 transition-all" />
+        </div>
+      </Link>
+
       <div className="mb-10 p-6 bg-brand-dark/50 border border-gold/10 rounded-xl">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2"><BarChart3 size={16} className="text-gold" /><span className="text-white text-sm font-heading">Overall Progress</span></div>
