@@ -8,9 +8,10 @@ const dataset = process.env.NEXT_PUBLIC_SANITY_DATASET || 'production'
 
 export default defineConfig({
   name: 'crunchtyme-bullies',
-  title: 'Crunchtime Bullies',
+  title: 'Crunchtyme Bullies',
   projectId,
   dataset,
+  basePath: '/studio',
   plugins: [
     structureTool({
       structure: (S) =>
