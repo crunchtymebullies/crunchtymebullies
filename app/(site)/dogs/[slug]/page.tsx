@@ -29,6 +29,8 @@ const statusDisplay: Record<string, { label: string; color: string }> = {
   reserved: { label: 'Reserved', color: 'text-amber-400 border-amber-500/30 bg-amber-500/10' },
   sold: { label: 'Sold', color: 'text-red-400 border-red-500/30 bg-red-500/10' },
   stud: { label: 'Stud', color: 'text-blue-400 border-blue-500/30 bg-blue-500/10' },
+  'our-program': { label: 'Our Program', color: 'text-gold border-gold/30 bg-gold/10' },
+  'not-for-sale': { label: 'Not For Sale', color: 'text-white/40 border-white/20 bg-white/5' },
   retired: { label: 'Retired', color: 'text-white/40 border-white/20 bg-white/5' },
   upcoming: { label: 'Coming Soon', color: 'text-purple-400 border-purple-500/30 bg-purple-500/10' },
 }
@@ -82,7 +84,7 @@ export default async function DogDetailPage({ params }: { params: { slug: string
       <div className="page-section py-12 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
           <Reveal animation="clip-up" duration={900}>
-            <DogGallery images={allImages} />
+            <DogGallery images={allImages} name={dog.name} />
           </Reveal>
 
           <div>
