@@ -83,9 +83,7 @@ export default async function DogDetailPage({ params }: { params: { slug: string
 
       <div className="page-section py-12 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-          <Reveal animation="clip-up" duration={900}>
-            <DogGallery images={allImages} name={dog.name} />
-          </Reveal>
+          <DogGallery images={allImages} name={dog.name} />
 
           <div>
             <Reveal animation="fade-right" delay={100}>
