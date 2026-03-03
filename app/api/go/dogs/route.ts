@@ -1,8 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { adminClient } from '@/lib/sanity-admin'
 
 function unauthorized() {
   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+}
+
+// Normalize a Sanity image so it always uses { _type: 'reference', _ref: id }
+// The admin UI loads dereferenced images (asset->{ url, _id }) but Sanity
+// expects { _type: 'reference', _ref: id } when writing back.
+function normalizeImage(img: any): any {
+  if (!img) return undefined
+  const ref = img.asset?._ref || img.asset?._id
+  if (!ref) return undefined
+  return {
+    _type: 'image',
+    ...(img._key ? { _key: img._key } : {}),
+    ...(img.alt ? { alt: img.alt } : {}),
+    asset: { _type: 'reference', _ref: ref },
+  }
+}
+
+function normalizeGallery(gallery: any[]): any[] {
+  if (!gallery || !Array.isArray(gallery)) return []
+  return gallery
+    .map((img) => normalizeImage(img))
+    .filter(Boolean)
+    .map((img, i) => ({
+      ...img,
+      _key: img._key || `gallery-${i}-${Date.now()}`,
+    }))
+}
+
+// Normalize image fields in a payload before writing to Sanity
+function normalizePayload(payload: Record<string, any>): Record<string, any> {
+  const out = { ...payload }
+  if ('mainImage' in out) {
+    out.mainImage = normalizeImage(out.mainImage)
+  }
+  if ('gallery' in out) {
+    out.gallery = normalizeGallery(out.gallery)
+  }
+  return out
+}
+
+function revalidateDogPages(slug?: string) {
+  revalidatePath('/')          // homepage (featured dogs)
+  revalidatePath('/dogs')      // dogs listing
+  if (slug) {
+    revalidatePath(`/dogs/${slug}`)  // individual dog page
+  }
 }
 
 // GET — list all dogs (with raw asset refs for admin)
@@ -37,35 +84,44 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case 'create': {
-        const doc = await adminClient.create({ _type: 'dog', ...payload })
+        const normalized = normalizePayload(payload)
+        const doc = await adminClient.create({ _type: 'dog', ...normalized })
+        const slug = normalized.slug?.current
+        revalidateDogPages(slug)
         return NextResponse.json({ ok: true, _id: doc._id })
       }
 
       case 'update': {
         const { _id, ...fields } = payload
         if (!_id) return NextResponse.json({ error: 'Missing _id' }, { status: 400 })
-        await adminClient.patch(_id).set(fields).commit()
+        const normalized = normalizePayload(fields)
+        await adminClient.patch(_id).set(normalized).commit()
+        const slug = normalized.slug?.current
+        revalidateDogPages(slug)
         return NextResponse.json({ ok: true })
       }
 
       case 'delete': {
-        const { _id } = payload
+        const { _id, slug } = payload
         if (!_id) return NextResponse.json({ error: 'Missing _id' }, { status: 400 })
         await adminClient.delete(_id)
+        revalidateDogPages(slug)
         return NextResponse.json({ ok: true })
       }
 
       case 'toggle_featured': {
-        const { _id, featured } = payload
+        const { _id, featured, slug } = payload
         if (!_id) return NextResponse.json({ error: 'Missing _id' }, { status: 400 })
         await adminClient.patch(_id).set({ featured: !featured }).commit()
+        revalidateDogPages(slug)
         return NextResponse.json({ ok: true, featured: !featured })
       }
 
       case 'set_status': {
-        const { _id, status } = payload
+        const { _id, status, slug } = payload
         if (!_id || !status) return NextResponse.json({ error: 'Missing _id or status' }, { status: 400 })
         await adminClient.patch(_id).set({ status }).commit()
+        revalidateDogPages(slug)
         return NextResponse.json({ ok: true })
       }
 

@@ -98,6 +98,31 @@ function getImageUrl(img: any): string {
   return ''
 }
 
+// Normalize image to proper Sanity reference format before saving
+// The admin loads dereferenced images (asset->{ url, _id }) but Sanity
+// expects { _type: 'reference', _ref: id } when writing.
+function normalizeImageForSave(img: any): any {
+  if (!img) return null
+  const ref = img.asset?._ref || img.asset?._id
+  if (!ref) return null
+  return {
+    _type: 'image',
+    ...(img._key ? { _key: img._key } : {}),
+    asset: { _type: 'reference', _ref: ref },
+  }
+}
+
+function normalizeGalleryForSave(gallery: any[]): any[] {
+  if (!gallery || !Array.isArray(gallery)) return []
+  return gallery
+    .map((img) => normalizeImageForSave(img))
+    .filter(Boolean)
+    .map((img: any, i: number) => ({
+      ...img,
+      _key: img._key || `gallery-${i}-${Date.now()}`,
+    }))
+}
+
 function dogToForm(dog: DogAdmin): DogFormData {
   return {
     name: dog.name || '', breed: dog.breed || 'American Bully',
@@ -355,25 +380,28 @@ export default function ManagePage() {
     if (!form.mainImage) { showToast('Main photo is required', 'error'); return }
     setSaving(true)
     try {
+      const slug = generateSlug(form.name)
       const payload: Record<string, any> = {
-        name: form.name.trim(), slug: { _type: 'slug', current: generateSlug(form.name) },
-        breed: form.breed || 'American Bully', status: form.status, featured: form.featured, mainImage: form.mainImage,
+        name: form.name.trim(), slug: { _type: 'slug', current: slug },
+        breed: form.breed || 'American Bully', status: form.status, featured: form.featured,
+        mainImage: normalizeImageForSave(form.mainImage),
       }
-      if (form.variety) payload.variety = form.variety
-      if (form.gender) payload.gender = form.gender
-      if (form.color) payload.color = form.color
-      if (form.dob) payload.dob = form.dob
-      if (form.weight) payload.weight = form.weight
-      if (form.height) payload.height = form.height
-      if (form.price) payload.price = Number(form.price)
-      if (form.personality) payload.personality = form.personality
-      if (form.description) payload.description = form.description
-      if (form.gallery.length > 0) payload.gallery = form.gallery
-      if (form.sire) payload.sire = form.sire
-      if (form.dam) payload.dam = form.dam
-      if (form.bloodline) payload.bloodline = form.bloodline
-      if (form.registry) payload.registry = form.registry
-      if (form.registrationNumber) payload.registrationNumber = form.registrationNumber
+      // Always include all fields so clearing a field actually clears it in Sanity
+      payload.variety = form.variety || ''
+      payload.gender = form.gender || ''
+      payload.color = form.color || ''
+      payload.dob = form.dob || ''
+      payload.weight = form.weight || ''
+      payload.height = form.height || ''
+      payload.price = form.price ? Number(form.price) : 0
+      payload.personality = form.personality || ''
+      payload.description = form.description || ''
+      payload.gallery = normalizeGalleryForSave(form.gallery)
+      payload.sire = form.sire || ''
+      payload.dam = form.dam || ''
+      payload.bloodline = form.bloodline || ''
+      payload.registry = form.registry || ''
+      payload.registrationNumber = form.registrationNumber || ''
 
       if (editingDog) {
         payload._id = editingDog._id
@@ -391,7 +419,8 @@ export default function ManagePage() {
   const handleDeleteDog = async () => {
     if (!editingDog) return; setShowDelete(false); setSaving(true)
     try {
-      await adminPost('/api/go/dogs', { action: 'delete', payload: { _id: editingDog._id } })
+      const slug = editingDog.slug?.current || ''
+      await adminPost('/api/go/dogs', { action: 'delete', payload: { _id: editingDog._id, slug } })
       showToast(`${editingDog.name} deleted`); setDogView('list'); setEditingDog(null); await loadDogs()
     } catch (err: any) { showToast(err.message, 'error') }
     finally { setSaving(false) }
@@ -399,7 +428,8 @@ export default function ManagePage() {
 
   const toggleFeatured = async (dog: DogAdmin) => {
     try {
-      await adminPost('/api/go/dogs', { action: 'toggle_featured', payload: { _id: dog._id, featured: dog.featured } })
+      const slug = dog.slug?.current || ''
+      await adminPost('/api/go/dogs', { action: 'toggle_featured', payload: { _id: dog._id, featured: dog.featured, slug } })
       setDogs(prev => prev.map(d => d._id === dog._id ? { ...d, featured: !d.featured } : d))
       showToast(dog.featured ? 'Removed from homepage' : 'Added to homepage')
     } catch (err: any) { showToast(err.message, 'error') }
@@ -409,7 +439,8 @@ export default function ManagePage() {
     const idx = STATUSES.indexOf(dog.status as any)
     const next = STATUSES[(idx + 1) % STATUSES.length]
     try {
-      await adminPost('/api/go/dogs', { action: 'set_status', payload: { _id: dog._id, status: next } })
+      const slug = dog.slug?.current || ''
+      await adminPost('/api/go/dogs', { action: 'set_status', payload: { _id: dog._id, status: next, slug } })
       setDogs(prev => prev.map(d => d._id === dog._id ? { ...d, status: next } : d))
       showToast(`${dog.name} → ${next}`)
     } catch (err: any) { showToast(err.message, 'error') }
