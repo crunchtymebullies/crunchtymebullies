@@ -42,9 +42,19 @@ export default async function DogDetailPage({ params }: { params: { slug: string
   const dog = await client.fetch<any>(DOG_BY_SLUG_QUERY, { slug: params.slug }).catch(() => null)
   if (!dog) notFound()
 
+  const safeImageUrl = (img: any): string | null => {
+    try {
+      if (!img?.asset) return null
+      // Handle both reference format (_ref) and dereferenced format (url)
+      if (img.asset.url) return img.asset.url
+      if (img.asset._ref) return urlFor(img).width(1200).height(1200).url()
+      return null
+    } catch { return null }
+  }
+
   const allImages = [
-    dog.mainImage ? urlFor(dog.mainImage).width(1200).height(1200).url() : null,
-    ...(dog.gallery || []).map((img: any) => urlFor(img).width(1200).height(1200).url()),
+    safeImageUrl(dog.mainImage),
+    ...(dog.gallery || []).map((img: any) => safeImageUrl(img)),
   ].filter(Boolean) as string[]
 
   const status = statusDisplay[dog.status] || statusDisplay.available
