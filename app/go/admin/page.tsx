@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'dogs' | 'store' | 'customers' | 'payments' | 'messages' | 'settings' | 'analytics'
+type Tab = 'overview' | 'dogs' | 'services' | 'store' | 'customers' | 'payments' | 'messages' | 'settings' | 'analytics'
 type ToastType = { message: string; type: 'success' | 'error'; id: number }
 
 interface DogAdmin {
@@ -31,6 +31,21 @@ const emptyForm: DogFormData = {
   dob: '', weight: '', height: '', status: 'available', price: '',
   featured: false, personality: '', description: '', mainImage: null, gallery: [],
   sire: '', dam: '', bloodline: '', registry: '', registrationNumber: '',
+}
+
+// ─── Service Types ────────────────────────────────────────────────────────────
+interface ServiceAdmin {
+  _id: string; title: string; slug?: { _type: string; current: string }
+  description?: string; price?: string; featured?: boolean; order?: number
+  image?: any
+}
+
+interface ServiceFormData {
+  title: string; description: string; price: string; featured: boolean; order: string; image: any | null
+}
+
+const emptyServiceForm: ServiceFormData = {
+  title: '', description: '', price: '', featured: false, order: '0', image: null,
 }
 
 // ─── Dropdown Data ───────────────────────────────────────────────────────────
@@ -207,6 +222,7 @@ const icons = {
   overview: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
   dogs: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2.5"/><path d="M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/></svg>,
   store: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+  services: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
   customers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   payments: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
   messages: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
@@ -229,6 +245,7 @@ const icons = {
 const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: boolean; comingSoon?: boolean }[] = [
   { id: 'overview', label: 'Overview', icon: 'overview' },
   { id: 'dogs', label: 'Dogs', icon: 'dogs', badge: true },
+  { id: 'services', label: 'Services', icon: 'services', badge: true },
   { id: 'store', label: 'Store', icon: 'store', comingSoon: true },
   { id: 'customers', label: 'Customers', icon: 'customers', comingSoon: true },
   { id: 'payments', label: 'Payments', icon: 'payments', comingSoon: true },
@@ -327,6 +344,16 @@ export default function ManagePage() {
   const [settingsSaving, setSettingsSaving] = useState(false)
   const settingsLoadedRef = useRef(false)
 
+  // Services state
+  const [services, setServices] = useState<ServiceAdmin[]>([])
+  const [servicesLoading, setServicesLoading] = useState(true)
+  const [serviceView, setServiceView] = useState<'list' | 'form'>('list')
+  const [editingService, setEditingService] = useState<ServiceAdmin | null>(null)
+  const [serviceForm, setServiceForm] = useState<ServiceFormData>(emptyServiceForm)
+  const [serviceSaving, setServiceSaving] = useState(false)
+  const [showDeleteService, setShowDeleteService] = useState(false)
+  const [uploadingServiceImg, setUploadingServiceImg] = useState(false)
+
   // Session check
   useEffect(() => {
     const saved = sessionStorage.getItem('ct-admin-auth')
@@ -342,6 +369,15 @@ export default function ManagePage() {
   }, [adminFetch, showToast])
 
   useEffect(() => { if (authState === 'authenticated') loadDogs() }, [authState, loadDogs])
+
+  // Load services
+  const loadServices = useCallback(async () => {
+    try { const data = await adminFetch('/api/go/services'); setServices(data) }
+    catch (err: any) { showToast(err.message, 'error') }
+    finally { setServicesLoading(false) }
+  }, [adminFetch, showToast])
+
+  useEffect(() => { if (authState === 'authenticated') loadServices() }, [authState, loadServices])
 
   // Load settings (only once per session to prevent strobe)
   useEffect(() => {
@@ -372,7 +408,7 @@ export default function ManagePage() {
     finally { setAuthLoading(false) }
   }
 
-  const switchTab = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false); if (tab === 'dogs') { setDogView('list'); setEditingDog(null) } }
+  const switchTab = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false); if (tab === 'dogs') { setDogView('list'); setEditingDog(null) }; if (tab === 'services') { setServiceView('list'); setEditingService(null) } }
 
   // ─── Dog CRUD ────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -495,6 +531,59 @@ export default function ManagePage() {
     showToast('Main photo swapped')
   }
 
+  // ─── Service CRUD ─────────────────────────────────────────────────────────
+  const serviceToForm = (svc: ServiceAdmin): ServiceFormData => ({
+    title: svc.title || '', description: svc.description || '',
+    price: svc.price || '', featured: svc.featured || false,
+    order: svc.order != null ? String(svc.order) : '0', image: svc.image || null,
+  })
+
+  const handleSaveService = async () => {
+    if (!serviceForm.title.trim()) { showToast('Title is required', 'error'); return }
+    setServiceSaving(true)
+    try {
+      const slug = serviceForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      const payload: Record<string, any> = {
+        title: serviceForm.title.trim(),
+        slug: { _type: 'slug', current: slug },
+        description: serviceForm.description || '',
+        price: serviceForm.price || '',
+        featured: serviceForm.featured,
+        order: serviceForm.order ? Number(serviceForm.order) : 0,
+        image: serviceForm.image || undefined,
+      }
+      if (editingService) {
+        payload._id = editingService._id
+        await adminPost('/api/go/services', { action: 'update', payload })
+        showToast(`${serviceForm.title} updated`)
+      } else {
+        await adminPost('/api/go/services', { action: 'create', payload })
+        showToast(`${serviceForm.title} added`)
+      }
+      setServiceView('list'); setEditingService(null); await loadServices()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setServiceSaving(false) }
+  }
+
+  const handleDeleteService = async () => {
+    if (!editingService) return; setShowDeleteService(false); setServiceSaving(true)
+    try {
+      await adminPost('/api/go/services', { action: 'delete', payload: { _id: editingService._id } })
+      showToast(`${editingService.title} deleted`); setServiceView('list'); setEditingService(null); await loadServices()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setServiceSaving(false) }
+  }
+
+  const uploadServiceImage = async (file: File) => {
+    setUploadingServiceImg(true)
+    try {
+      const result = await adminUpload(file, serviceForm.title || 'service')
+      setServiceForm(f => ({ ...f, image: { _type: 'image', asset: { _type: 'reference', _ref: result._id } } }))
+      showToast('Image uploaded')
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setUploadingServiceImg(false) }
+  }
+
   // Settings save
   const saveSettings = async () => {
     setSettingsSaving(true)
@@ -607,7 +696,8 @@ export default function ManagePage() {
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`ct-nav-item w-full font-heading ${activeTab === item.id ? 'active' : ''}`}>
                   <span className="ct-nav-icon">{icons[item.icon]}</span>
                   <span>{item.label}</span>
-                  {item.badge && dogs.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>}
+                  {item.badge && item.id === 'dogs' && dogs.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>}
+                  {item.badge && item.id === 'services' && services.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{services.length}</span>}
                   {item.comingSoon && <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 font-heading uppercase tracking-wider">Soon</span>}
                   {!item.badge && !item.comingSoon && <span className="ct-indicator" />}
                 </button>
@@ -634,7 +724,8 @@ export default function ManagePage() {
           <div className="ct-mobile-header">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white/50 hover:text-gold transition-colors">{sidebarOpen ? icons.close : icons.menu}</button>
             {activeTab === 'dogs' && dogView === 'form' && <button onClick={() => { setDogView('list'); setEditingDog(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
-            <h1 className="text-white font-display text-lg flex-1">{activeTab === 'dogs' && dogView === 'form' ? (editingDog ? 'Edit Dog' : 'Add Dog') : tabLabel}</h1>
+            {activeTab === 'services' && serviceView === 'form' && <button onClick={() => { setServiceView('list'); setEditingService(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
+            <h1 className="text-white font-display text-lg flex-1">{activeTab === 'dogs' && dogView === 'form' ? (editingDog ? 'Edit Dog' : 'Add Dog') : activeTab === 'services' && serviceView === 'form' ? (editingService ? 'Edit Service' : 'Add Service') : tabLabel}</h1>
             <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center"><span className="text-gold text-[10px] font-heading">CT</span></div>
           </div>
 
@@ -657,8 +748,8 @@ export default function ManagePage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <button onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }, 50) }} className="p-4 rounded-xl bg-gold/10 border border-gold/20 hover:bg-gold/15 transition-colors text-left"><div className="text-gold mb-2">{icons.plus}</div><p className="text-white text-sm font-heading">Add Dog</p></button>
                     <button onClick={() => switchTab('dogs')} className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors text-left"><div className="text-emerald-400 mb-2">{icons.dogs}</div><p className="text-white text-sm font-heading">Manage Dogs</p></button>
+                    <button onClick={() => switchTab('services')} className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors text-left"><div className="text-amber-400 mb-2">{icons.services}</div><p className="text-white text-sm font-heading">Services</p></button>
                     <button onClick={() => switchTab('settings')} className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 transition-colors text-left"><div className="text-blue-400 mb-2">{icons.settings}</div><p className="text-white text-sm font-heading">Settings</p></button>
-                    <Link href="/go" className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors text-left"><div className="text-purple-400 mb-2">{icons.checklist}</div><p className="text-white text-sm font-heading">Checklist</p></Link>
                   </div>
                 </div>
                 <div>
@@ -896,6 +987,93 @@ export default function ManagePage() {
                   <button onClick={saveSettings} disabled={settingsSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">
                     {settingsSaving ? 'Saving...' : 'Save Settings'}</button>
                 </>)}
+              </div>
+            )}
+
+            {/* SERVICES LIST */}
+            {activeTab === 'services' && serviceView === 'list' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div><h2 className="text-white text-xl font-display">Services <span className="text-white/30 text-sm font-body">({services.length})</span></h2>
+                  <p className="text-white/40 text-xs font-body mt-0.5">Manage the services shown on your Services page</p></div>
+                  <button onClick={() => { setEditingService(null); setServiceForm(emptyServiceForm); setServiceView('form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
+                </div>
+                {servicesLoading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading services...</div></div>
+                : services.length === 0 ? <p className="text-white/30 text-center py-12 font-body">No services yet. Tap + to add one.</p>
+                : services.map(svc => (
+                  <div key={svc._id} onClick={() => { setEditingService(svc); setServiceForm(serviceToForm(svc)); setServiceView('form') }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
+                    <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5 flex items-center justify-center">
+                      {getImageUrl(svc.image) ? <img src={getImageUrl(svc.image)} alt={svc.title} className="w-full h-full object-cover" /> : <span className="text-white/10">{icons.services}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-heading truncate">{svc.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {svc.price && <span className="text-gold/60 text-xs font-heading">{svc.price}</span>}
+                        {svc.featured && <span className="text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border bg-gold/10 text-gold/60 border-gold/20">Featured</span>}
+                      </div>
+                    </div>
+                    <span className="text-white/15 text-xs font-heading shrink-0">#{svc.order ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* SERVICE FORM */}
+            {activeTab === 'services' && serviceView === 'form' && (
+              <div className="max-w-lg mx-auto space-y-5 pb-8">
+                <button onClick={() => { setServiceView('list'); setEditingService(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1"><span>{icons.back}</span> Back to list</button>
+                <h2 className="text-white text-xl font-display hidden md:block">{editingService ? 'Edit Service' : 'Add New Service'}</h2>
+
+                {/* Title */}
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Title *</label>
+                <input type="text" value={serviceForm.title} onChange={e => setServiceForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Stud Service" className={inputCls} /></div>
+
+                {/* Image */}
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Image</label>
+                  {serviceForm.image ? (
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#0a0a0a] border border-white/10 group max-w-xs">
+                      <img src={getImageUrl(serviceForm.image)} alt="Service" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity">
+                        <label className="cursor-pointer text-gold text-xs font-heading px-3 py-1.5 rounded-lg border border-gold/30 hover:bg-gold/10">Change<input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadServiceImage(e.target.files[0])} /></label>
+                        <button type="button" onClick={() => setServiceForm(f => ({ ...f, image: null }))} className="text-red-400 text-xs font-heading px-3 py-1.5 rounded-lg border border-red-500/30 hover:bg-red-500/10">Remove</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className={`block w-full py-6 border-2 border-dashed border-gold/20 rounded-lg text-center cursor-pointer hover:border-gold/40 transition-colors ${uploadingServiceImg ? 'animate-pulse' : ''}`}>
+                      <span className="text-gold/60 font-body text-sm">{uploadingServiceImg ? 'Uploading...' : '+ Upload Image (optional)'}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadServiceImage(e.target.files[0])} disabled={uploadingServiceImg} />
+                    </label>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Short Description</label>
+                <textarea value={serviceForm.description} onChange={e => setServiceForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description of this service..." rows={3} className={`${inputCls} resize-none`} /></div>
+
+                {/* Price + Order */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Price / Range</label>
+                  <input type="text" value={serviceForm.price} onChange={e => setServiceForm(f => ({ ...f, price: e.target.value }))} placeholder="e.g. $500 or Contact for pricing" className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Display Order</label>
+                  <input type="number" value={serviceForm.order} onChange={e => setServiceForm(f => ({ ...f, order: e.target.value }))} placeholder="0" className={`${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} /></div>
+                </div>
+
+                {/* Featured Toggle */}
+                <div className="flex items-center justify-between py-2">
+                  <div><p className="text-white text-sm font-heading">Featured</p><p className="text-white/30 text-xs font-body">Highlighted on the services page</p></div>
+                  <button type="button" onClick={() => setServiceForm(f => ({ ...f, featured: !f.featured }))}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${serviceForm.featured ? 'bg-gold' : 'bg-white/10'}`}>
+                    <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${serviceForm.featured ? 'left-6' : 'left-1'}`} /></button>
+                </div>
+
+                {/* Save */}
+                <button onClick={handleSaveService} disabled={serviceSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors text-base disabled:opacity-50">
+                  {serviceSaving ? 'Saving...' : editingService ? 'Save Changes' : 'Add Service'}</button>
+
+                {editingService && <button onClick={() => setShowDeleteService(true)} disabled={serviceSaving} className="w-full py-3 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors text-sm font-heading">Delete {editingService.title}</button>}
+                {showDeleteService && editingService && <ConfirmModal title={`Delete ${editingService.title}?`} message="This permanently removes this service from the site." onConfirm={handleDeleteService} onCancel={() => setShowDeleteService(false)} />}
               </div>
             )}
 
