@@ -75,10 +75,11 @@ export default async function ServicesPage() {
         </div>
       </div>
 
-      {sanityServices.length > 0 && (
+      {/* Sanity-managed services render here when properly configured with descriptions */}
+      {sanityServices.filter((svc: any) => svc.description && svc.title).length >= 3 && (
         <Section>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {sanityServices.map((svc: any, i: number) => (
+            {sanityServices.filter((svc: any) => svc.description && svc.title).map((svc: any, i: number) => (
               <Reveal key={svc._id} animation="scale-up" delay={i * 100}>
                 <div className="h-full p-8 bg-brand-dark/50 border border-white/5 rounded-xl hover:border-gold/20 transition-all duration-300">
                   {svc.image?.asset?.url && (
