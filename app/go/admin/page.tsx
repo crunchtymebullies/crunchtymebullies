@@ -361,6 +361,9 @@ export default function ManagePage() {
   const [editingProduct, setEditingProduct] = useState<any | null>(null)
   const [productForm, setProductForm] = useState({ title: '', description: '', status: 'published' })
   const [productSaving, setProductSaving] = useState(false)
+  const [priceMode, setPriceMode] = useState<'none' | 'percent' | 'flat'>('none')
+  const [priceValue, setPriceValue] = useState('')
+  const [priceSaving, setPriceSaving] = useState(false)
 
   // Session check
   useEffect(() => {
@@ -623,6 +626,32 @@ export default function ManagePage() {
       setStoreProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: next } : p))
       showToast(`${product.title} → ${next}`)
     } catch (err: any) { showToast(err.message, 'error') }
+  }
+
+  const handleBulkPriceUpdate = async () => {
+    if (!editingProduct || !priceValue) return
+    setPriceSaving(true)
+    try {
+      const val = parseFloat(priceValue)
+      if (isNaN(val) || val <= 0) { showToast('Enter a valid number', 'error'); setPriceSaving(false); return }
+
+      if (priceMode === 'percent') {
+        await adminPost('/api/go/store', {
+          action: 'bulk_update_prices',
+          payload: { product_id: editingProduct.id, mode: 'add_percent', value: val },
+        })
+        showToast(`All variant prices increased by ${val}%`)
+      } else if (priceMode === 'flat') {
+        await adminPost('/api/go/store', {
+          action: 'bulk_update_prices',
+          payload: { product_id: editingProduct.id, mode: 'set', value: val },
+        })
+        showToast(`All variants set to $${val.toFixed(2)}`)
+      }
+      setPriceMode('none'); setPriceValue('')
+      await loadStoreProducts()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setPriceSaving(false) }
   }
 
   // Settings save
@@ -1145,6 +1174,7 @@ export default function ManagePage() {
                     <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
                       {product.thumbnail ? <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white/10">{icons.store}</div>}
                     </div>
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-heading truncate">{product.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -1154,7 +1184,12 @@ export default function ManagePage() {
                           </span>
                         </button>
                         <span className="text-white/25 text-xs font-body">{product.variants_count} variants</span>
-                        {product.first_price && <span className="text-gold/50 text-xs font-heading">from ${(product.first_price.amount / 100).toFixed(2)}</span>}
+                        {product.first_price && <span className="text-gold/50 text-xs font-heading">
+                          {product.min_price && product.max_price && product.min_price !== product.max_price
+                            ? `$${(product.min_price / 100).toFixed(2)} – $${(product.max_price / 100).toFixed(2)}`
+                            : `from $${(product.first_price.amount / 100).toFixed(2)}`
+                          }
+                        </span>}
                       </div>
                     </div>
                   </div>
@@ -1205,6 +1240,91 @@ export default function ManagePage() {
                     ))}
                   </div>
                   <p className="text-white/20 text-[10px] font-body mt-1.5">Draft products are hidden from the shop page</p>
+                </div>
+
+                {/* PRICING */}
+                <div className="border border-gold/10 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 bg-gold/5 border-b border-gold/10">
+                    <h3 className="text-gold text-xs uppercase tracking-wider font-heading">Pricing</h3>
+                    <p className="text-white/30 text-[10px] font-body mt-0.5">Current prices and markup tools</p>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    {/* Current price range */}
+                    {editingProduct.min_price > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-white/40 text-xs font-heading">Current Range</span>
+                        <span className="text-gold font-heading text-sm">
+                          {editingProduct.min_price === editingProduct.max_price
+                            ? `$${(editingProduct.min_price / 100).toFixed(2)}`
+                            : `$${(editingProduct.min_price / 100).toFixed(2)} – $${(editingProduct.max_price / 100).toFixed(2)}`
+                          }
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Variant prices preview */}
+                    {editingProduct.variant_prices?.length > 0 && (
+                      <div>
+                        <span className="text-white/30 text-[10px] font-heading uppercase tracking-wider block mb-2">Variant Prices (first 5)</span>
+                        <div className="space-y-1">
+                          {editingProduct.variant_prices.slice(0, 5).map((vp: any) => (
+                            <div key={vp.id} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-white/[0.02]">
+                              <span className="text-white/40 text-xs font-body truncate flex-1">{vp.title}</span>
+                              <span className="text-white/60 text-xs font-heading ml-3">${(vp.amount / 100).toFixed(2)}</span>
+                            </div>
+                          ))}
+                          {editingProduct.variant_prices.length > 5 && (
+                            <p className="text-white/20 text-[10px] font-body text-center pt-1">+ {editingProduct.variant_prices.length - 5} more variants</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Markup tools */}
+                    <div className="border-t border-white/5 pt-4">
+                      <span className="text-white/40 text-xs font-heading uppercase tracking-wider block mb-3">Adjust Pricing</span>
+                      <div className="flex gap-2 mb-3">
+                        <button onClick={() => { setPriceMode(priceMode === 'percent' ? 'none' : 'percent'); setPriceValue('') }}
+                          className={`flex-1 py-2.5 rounded-lg border text-xs font-heading transition-colors ${priceMode === 'percent' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/40 hover:text-white/60'}`}>
+                          % Markup
+                        </button>
+                        <button onClick={() => { setPriceMode(priceMode === 'flat' ? 'none' : 'flat'); setPriceValue('') }}
+                          className={`flex-1 py-2.5 rounded-lg border text-xs font-heading transition-colors ${priceMode === 'flat' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/40 hover:text-white/60'}`}>
+                          Flat Price
+                        </button>
+                      </div>
+
+                      {priceMode !== 'none' && (
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm">
+                              {priceMode === 'percent' ? '%' : '$'}
+                            </span>
+                            <input type="number" value={priceValue} onChange={e => setPriceValue(e.target.value)}
+                              placeholder={priceMode === 'percent' ? 'e.g. 50 for 50% markup' : 'e.g. 29.99'}
+                              className={`${inputCls} pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
+                          </div>
+                          <p className="text-white/20 text-[10px] font-body">
+                            {priceMode === 'percent'
+                              ? `This adds ${priceValue || '0'}% on top of current prices for all variants. Standard markup is 40-100%.`
+                              : `This sets ALL variants to $${priceValue || '0'} flat. Best for single-price items like hats.`
+                            }
+                          </p>
+                          {priceMode === 'percent' && priceValue && editingProduct.min_price > 0 && (
+                            <div className="p-3 rounded-lg bg-gold/5 border border-gold/10">
+                              <p className="text-gold/70 text-xs font-heading">Preview: ${(editingProduct.min_price / 100).toFixed(2)} → ${(editingProduct.min_price / 100 * (1 + parseFloat(priceValue || '0') / 100)).toFixed(2)}</p>
+                            </div>
+                          )}
+                          <button onClick={handleBulkPriceUpdate} disabled={priceSaving || !priceValue}
+                            className="w-full py-2.5 rounded-lg bg-gold/20 border border-gold/30 text-gold font-heading text-sm hover:bg-gold/30 transition-colors disabled:opacity-50">
+                            {priceSaving ? 'Updating...' : `Apply ${priceMode === 'percent' ? 'Markup' : 'Price'} to All ${editingProduct.variants_count} Variants`}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <p className="text-white/15 text-[10px] font-body">💡 Tip: Standard POD markup is 40-100% over cost. For premium items (hoodies, Under Armour), 50-80%. For basics (tees, hats), 80-150%.</p>
+                  </div>
                 </div>
 
                 {/* Product info (read-only) */}

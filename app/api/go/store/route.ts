@@ -104,8 +104,72 @@ export async function POST(req: NextRequest) {
       case 'update': {
         const { id, ...fields } = payload
         if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
-        const data = await medusaAdmin(`/products/${id}`, token, { method: 'POST', body: fields })
-        return NextResponse.json({ ok: true, product: { id: data.product.id, title: data.product.title } })
+        // Separate price updates from product field updates
+        const { prices, ...productFields } = fields
+        
+        // Update product fields (title, description, status)
+        if (Object.keys(productFields).length > 0) {
+          await medusaAdmin(`/products/${id}`, token, { method: 'POST', body: productFields })
+        }
+        
+        return NextResponse.json({ ok: true })
+      }
+
+      case 'update_variant_price': {
+        const { product_id, variant_id, amount } = payload
+        if (!product_id || !variant_id || amount == null) {
+          return NextResponse.json({ error: 'Missing product_id, variant_id, or amount' }, { status: 400 })
+        }
+        // Get region ID
+        const regData = await medusaAdmin('/regions', token)
+        const regionId = regData.regions?.[0]?.id
+        if (!regionId) return NextResponse.json({ error: 'No region configured' }, { status: 500 })
+        
+        await medusaAdmin(`/products/${product_id}/variants/${variant_id}`, token, {
+          method: 'POST',
+          body: { prices: [{ amount: Math.round(amount), currency_code: 'usd', region_id: regionId }] },
+        })
+        return NextResponse.json({ ok: true })
+      }
+
+      case 'bulk_update_prices': {
+        // Update all variants of a product by multiplying current prices by a factor
+        // or setting a flat price
+        const { product_id, mode, value } = payload
+        if (!product_id) return NextResponse.json({ error: 'Missing product_id' }, { status: 400 })
+        
+        const regData = await medusaAdmin('/regions', token)
+        const regionId = regData.regions?.[0]?.id
+        if (!regionId) return NextResponse.json({ error: 'No region configured' }, { status: 500 })
+        
+        const prodData = await medusaAdmin(`/products/${product_id}`, token)
+        const variants = prodData.product?.variants || []
+        let updated = 0
+        
+        for (const v of variants) {
+          let newAmount: number
+          const currentPrice = v.prices?.[0]?.amount || 0
+          
+          if (mode === 'multiply') {
+            newAmount = Math.round(currentPrice * value)
+          } else if (mode === 'set') {
+            newAmount = Math.round(value * 100) // value is dollars, convert to cents
+          } else if (mode === 'add_percent') {
+            newAmount = Math.round(currentPrice * (1 + value / 100))
+          } else {
+            continue
+          }
+          
+          try {
+            await medusaAdmin(`/products/${product_id}/variants/${v.id}`, token, {
+              method: 'POST',
+              body: { prices: [{ amount: newAmount, currency_code: 'usd', region_id: regionId }] },
+            })
+            updated++
+          } catch { /* skip failed variants */ }
+        }
+        
+        return NextResponse.json({ ok: true, updated })
       }
 
       case 'set_status': {
