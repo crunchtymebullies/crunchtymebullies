@@ -7,7 +7,7 @@ import { Eye } from 'lucide-react'
 import type { StoreProduct } from '@/lib/store-api'
 import { formatPrice, getLowestPrice, getPriceRange } from '@/lib/store-api'
 
-export default function ProductCard({ product, index = 0 }: { product: StoreProduct; index?: number }) {
+export default function ProductCard({ product, index = 0, onQuickView }: { product: StoreProduct; index?: number; onQuickView?: () => void }) {
   const cardRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
@@ -97,9 +97,10 @@ export default function ProductCard({ product, index = 0 }: { product: StoreProd
 
           {/* Quick view button */}
           <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isHovered ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            <span className="flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-[10px] tracking-[0.2em] uppercase font-heading">
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); onQuickView?.() }}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-white text-[10px] tracking-[0.2em] uppercase font-heading hover:bg-gold/20 hover:border-gold/30 transition-colors">
               <Eye size={14} /> Quick View
-            </span>
+            </button>
           </div>
 
           {/* Color count badge */}
