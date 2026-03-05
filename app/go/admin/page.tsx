@@ -361,6 +361,13 @@ export default function ManagePage() {
   const [editingProduct, setEditingProduct] = useState<any | null>(null)
   const [productForm, setProductForm] = useState({ title: '', description: '', status: 'published' })
   const [productSaving, setProductSaving] = useState(false)
+  const [productDetail, setProductDetail] = useState<any | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [markupType, setMarkupType] = useState<'percentage' | 'fixed'>('percentage')
+  const [markupValue, setMarkupValue] = useState('')
+  const [pricingLoading, setPricingLoading] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<any | null>(null)
   const [priceMode, setPriceMode] = useState<'none' | 'percent' | 'flat'>('none')
   const [priceValue, setPriceValue] = useState('')
   const [priceSaving, setPriceSaving] = useState(false)
@@ -611,10 +618,10 @@ export default function ManagePage() {
     try {
       await adminPost('/api/go/store', {
         action: 'update',
-        payload: { id: editingProduct.id, title: productForm.title, description: productForm.description },
+        payload: { id: editingProduct.id, title: productForm.title, description: productForm.description, status: productForm.status },
       })
       showToast(`${productForm.title} updated`)
-      setStoreView('list'); setEditingProduct(null); await loadStoreProducts()
+      setStoreView('list'); setEditingProduct(null); setProductDetail(null); await loadStoreProducts()
     } catch (err: any) { showToast(err.message, 'error') }
     finally { setProductSaving(false) }
   }
@@ -626,6 +633,44 @@ export default function ManagePage() {
       setStoreProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: next } : p))
       showToast(`${product.title} → ${next}`)
     } catch (err: any) { showToast(err.message, 'error') }
+  }
+
+  const loadProductDetail = async (product: any) => {
+    setDetailLoading(true)
+    try {
+      const data = await adminPost('/api/go/store', {
+        action: 'get_detail',
+        payload: { id: product.id, printful_id: product.printful_id },
+      })
+      setProductDetail(data)
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setDetailLoading(false) }
+  }
+
+  const handleBulkPrice = async () => {
+    if (!editingProduct || !markupValue) return
+    setPricingLoading(true)
+    try {
+      const val = markupType === 'fixed' ? Math.round(parseFloat(markupValue) * 100) : parseFloat(markupValue)
+      const result = await adminPost('/api/go/store', {
+        action: 'bulk_price',
+        payload: { id: editingProduct.id, printful_id: editingProduct.printful_id, markup_type: markupType, markup_value: val },
+      })
+      showToast(`Updated ${result.updated} variant prices`)
+      await loadProductDetail(editingProduct)
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setPricingLoading(false) }
+  }
+
+  const handleSyncPrintful = async () => {
+    setSyncing(true); setSyncResult(null)
+    try {
+      const result = await adminPost('/api/go/store', { action: 'sync_printful', payload: {} })
+      setSyncResult(result)
+      if (result.synced > 0) { showToast(`Synced ${result.synced} new products!`); await loadStoreProducts() }
+      else showToast('Everything is up to date')
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setSyncing(false) }
   }
 
   const handleBulkPriceUpdate = async () => {
@@ -1153,356 +1198,157 @@ export default function ManagePage() {
             {/* STORE LIST */}
             {activeTab === 'store' && storeView === 'list' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h2 className="text-white text-xl font-display">Store Products <span className="text-white/30 text-sm font-body">({storeProducts.length})</span></h2>
-                    <p className="text-white/40 text-xs font-body mt-0.5">Manage your Printful merchandise — edit titles, descriptions, and visibility</p>
+                    <p className="text-white/40 text-xs font-body mt-0.5">Edit products, set pricing, manage visibility</p>
                   </div>
-                  <Link href="/shop" target="_blank" className="px-3 py-1.5 rounded-lg border border-gold/20 text-gold/60 text-xs font-heading hover:bg-gold/10 transition-colors flex items-center gap-1.5">
-                    {icons.external} <span>View Shop</span>
-                  </Link>
+                  <div className="flex gap-2">
+                    <button onClick={handleSyncPrintful} disabled={syncing}
+                      className="px-3 py-1.5 rounded-lg border border-gold/20 text-gold/60 text-xs font-heading hover:bg-gold/10 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                      {syncing ? 'Syncing...' : <>{icons.down} Sync Printful</>}
+                    </button>
+                    <Link href="/shop" target="_blank" className="px-3 py-1.5 rounded-lg border border-white/10 text-white/40 text-xs font-heading hover:text-gold hover:border-gold/20 transition-colors flex items-center gap-1.5">
+                      {icons.external} Shop
+                    </Link>
+                  </div>
                 </div>
 
+                {syncResult && (
+                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-body">
+                    Sync: {syncResult.synced} new, {syncResult.skipped} existing, {syncResult.total} total
+                    {syncResult.new_products?.length > 0 && <span className="block mt-1 text-emerald-400">New: {syncResult.new_products.join(', ')}</span>}
+                  </div>
+                )}
+
                 {storeLoading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading products...</div></div>
-                : storeProducts.length === 0 ? <p className="text-white/30 text-center py-12 font-body">No products found. Products are synced from Printful.</p>
+                : storeProducts.length === 0 ? <p className="text-white/30 text-center py-12 font-body">No products. Hit Sync Printful to import.</p>
                 : storeProducts.map(product => (
                   <div key={product.id} onClick={() => {
                     setEditingProduct(product)
                     setProductForm({ title: product.title || '', description: product.description || '', status: product.status || 'published' })
-                    setStoreView('form')
+                    setProductDetail(null); setMarkupValue(''); setStoreView('form')
+                    loadProductDetail(product)
                   }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
                     <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
                       {product.thumbnail ? <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white/10">{icons.store}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-heading truncate">{product.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <button onClick={e => { e.stopPropagation(); toggleProductStatus(product) }}>
-                          <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${product.status === 'published' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/10 text-white/40 border-white/20'}`}>
-                            {product.status}
-                          </span>
+                          <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${product.status === 'published' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/10 text-white/40 border-white/20'}`}>{product.status}</span>
                         </button>
-                        <span className="text-white/25 text-xs font-body">{product.variants_count} variants</span>
-                        {product.first_price && <span className="text-gold/50 text-xs font-heading">
-                          {product.min_price && product.max_price && product.min_price !== product.max_price
-                            ? `$${(product.min_price / 100).toFixed(2)} – $${(product.max_price / 100).toFixed(2)}`
-                            : `from $${(product.first_price.amount / 100).toFixed(2)}`
-                          }
-                        </span>}
+                        <span className="text-white/25 text-xs font-body">{product.variants_count}v</span>
+                        {product.first_price && <span className="text-gold/50 text-xs font-heading">${(product.first_price.amount / 100).toFixed(2)}</span>}
                       </div>
                     </div>
                   </div>
                 ))}
-
-                <div className="p-4 rounded-xl bg-[#111] border border-white/5 mt-6">
-                  <p className="text-white/30 text-xs font-body">Products and variants are synced from <span className="text-gold/50">Printful</span>. To add new products or change variants/pricing, update them in your Printful dashboard and they will sync here.</p>
-                </div>
               </div>
             )}
 
-            {/* STORE PRODUCT EDIT FORM */}
+            {/* STORE PRODUCT EDITOR */}
             {activeTab === 'store' && storeView === 'form' && editingProduct && (
-              <div className="max-w-lg mx-auto space-y-5 pb-8">
-                <button onClick={() => { setStoreView('list'); setEditingProduct(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1"><span>{icons.back}</span> Back to products</button>
-                <h2 className="text-white text-xl font-display hidden md:block">Edit Product</h2>
+              <div className="max-w-2xl mx-auto space-y-6 pb-8">
+                <button onClick={() => { setStoreView('list'); setEditingProduct(null); setProductDetail(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1"><span>{icons.back}</span> Back to products</button>
 
-                {/* Product thumbnail */}
-                {editingProduct.thumbnail && (
-                  <div className="relative w-full aspect-video max-w-xs rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10">
-                    <img src={editingProduct.thumbnail} alt={editingProduct.title} className="w-full h-full object-cover" />
+                <div className="flex gap-4 items-start">
+                  {editingProduct.thumbnail && (<div className="w-20 h-20 rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 shrink-0"><img src={editingProduct.thumbnail} alt="" className="w-full h-full object-cover" /></div>)}
+                  <div><h2 className="text-white text-xl font-display">{editingProduct.title}</h2><p className="text-white/30 text-xs font-heading mt-1">{editingProduct.variants_count} variants · /shop/{editingProduct.handle}</p></div>
+                </div>
+
+                {detailLoading ? (
+                  <div className="text-center py-8"><div className="text-gold/50 animate-pulse font-heading text-sm">Loading financials...</div></div>
+                ) : productDetail?.stats && (
+                  <div className="p-4 rounded-xl bg-[#111] border border-gold/10">
+                    <h3 className="text-gold text-xs uppercase tracking-wider font-heading mb-3">Financial Overview</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Avg Cost', value: `$${(productDetail.stats.avg_cost / 100).toFixed(2)}`, color: 'text-white/70' },
+                        { label: 'Avg Retail', value: `$${(productDetail.stats.avg_retail / 100).toFixed(2)}`, color: 'text-gold' },
+                        { label: 'Avg Profit', value: `$${(productDetail.stats.avg_profit / 100).toFixed(2)}`, color: 'text-emerald-400' },
+                        { label: 'Avg Margin', value: `${productDetail.stats.avg_margin}%`, color: productDetail.stats.avg_margin > 20 ? 'text-emerald-400' : productDetail.stats.avg_margin > 10 ? 'text-amber-400' : 'text-red-400' },
+                      ].map(s => (
+                        <div key={s.label} className="text-center p-2"><p className="text-white/30 text-[10px] uppercase tracking-wider font-heading">{s.label}</p><p className={`text-lg font-display ${s.color}`}>{s.value}</p></div>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/5 flex justify-between text-[10px] font-heading text-white/25">
+                      <span>Margin range: {productDetail.stats.lowest_margin}% – {productDetail.stats.highest_margin}%</span>
+                      <span>{productDetail.stats.total_variants} variants</span>
+                    </div>
+                    {productDetail.shipping_estimate && (<div className="mt-2 text-[10px] font-heading text-white/25">Est. shipping (US): ${(productDetail.shipping_estimate.rate / 100).toFixed(2)} ({productDetail.shipping_estimate.min_days}-{productDetail.shipping_estimate.max_days} days)</div>)}
                   </div>
                 )}
 
-                {/* Title */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Product Title</label>
-                  <input type="text" value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} className={inputCls} />
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Description</label>
-                  <textarea value={productForm.description} onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))} rows={5} placeholder="Describe this product — materials, fit, features..." className={`${inputCls} resize-none`} />
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Status</label>
-                  <div className="flex gap-2">
-                    {['published', 'draft'].map(s => (
-                      <button key={s} type="button" onClick={() => setProductForm(f => ({ ...f, status: s }))}
-                        className={`flex-1 py-2.5 rounded-lg border text-sm font-heading capitalize transition-colors ${
-                          productForm.status === s
-                            ? s === 'published' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/20 bg-white/5 text-white/50'
-                            : 'border-white/10 text-white/30 hover:text-white/50'
-                        }`}>{s}</button>
-                    ))}
-                  </div>
-                  <p className="text-white/20 text-[10px] font-body mt-1.5">Draft products are hidden from the shop page</p>
-                </div>
-
-                {/* PRICING */}
-                <div className="border border-gold/10 rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 bg-gold/5 border-b border-gold/10">
-                    <h3 className="text-gold text-xs uppercase tracking-wider font-heading">Pricing</h3>
-                    <p className="text-white/30 text-[10px] font-body mt-0.5">Current prices and markup tools</p>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    {/* Current price range */}
-                    {editingProduct.min_price > 0 && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/40 text-xs font-heading">Current Range</span>
-                        <span className="text-gold font-heading text-sm">
-                          {editingProduct.min_price === editingProduct.max_price
-                            ? `$${(editingProduct.min_price / 100).toFixed(2)}`
-                            : `$${(editingProduct.min_price / 100).toFixed(2)} – $${(editingProduct.max_price / 100).toFixed(2)}`
-                          }
-                        </span>
+                {productDetail && editingProduct.printful_id && (
+                  <div className="p-4 rounded-xl bg-[#111] border border-white/5">
+                    <h3 className="text-white text-sm font-heading mb-3">Bulk Pricing Tool</h3>
+                    <p className="text-white/30 text-xs font-body mb-4">Set all variant prices based on Printful cost. Applies to all {editingProduct.variants_count} variants.</p>
+                    <div className="flex gap-2 mb-3">
+                      <button onClick={() => setMarkupType('percentage')} className={`flex-1 py-2 rounded-lg border text-xs font-heading transition-colors ${markupType === 'percentage' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/30'}`}>% Markup</button>
+                      <button onClick={() => setMarkupType('fixed')} className={`flex-1 py-2 rounded-lg border text-xs font-heading transition-colors ${markupType === 'fixed' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/30'}`}>$ Fixed Add</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">{markupType === 'percentage' ? '%' : '$'}</span>
+                        <input type="number" value={markupValue} onChange={e => setMarkupValue(e.target.value)} placeholder={markupType === 'percentage' ? 'e.g. 35' : 'e.g. 12.00'} className={`${inputCls} pl-8 py-2.5 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
                       </div>
+                      <button onClick={handleBulkPrice} disabled={pricingLoading || !markupValue} className="px-5 py-2.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold text-xs hover:bg-gold/90 transition-colors disabled:opacity-50">{pricingLoading ? 'Updating...' : 'Apply'}</button>
+                    </div>
+                    {markupValue && productDetail?.stats?.avg_cost > 0 && (
+                      <p className="text-white/20 text-[10px] font-body mt-2">Preview: ${(productDetail.stats.avg_cost / 100).toFixed(2)} cost → <span className="text-gold/60">${markupType === 'percentage' ? ((productDetail.stats.avg_cost / 100) * (1 + parseFloat(markupValue || '0') / 100)).toFixed(2) : ((productDetail.stats.avg_cost / 100) + parseFloat(markupValue || '0')).toFixed(2)}</span> retail (avg)</p>
                     )}
+                  </div>
+                )}
 
-                    {/* Variant prices preview */}
-                    {editingProduct.variant_prices?.length > 0 && (
-                      <div>
-                        <span className="text-white/30 text-[10px] font-heading uppercase tracking-wider block mb-2">Variant Prices (first 5)</span>
-                        <div className="space-y-1">
-                          {editingProduct.variant_prices.slice(0, 5).map((vp: any) => (
-                            <div key={vp.id} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-white/[0.02]">
-                              <span className="text-white/40 text-xs font-body truncate flex-1">{vp.title}</span>
-                              <span className="text-white/60 text-xs font-heading ml-3">${(vp.amount / 100).toFixed(2)}</span>
-                            </div>
+                <div className="space-y-4">
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Product Title</label><input type="text" value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Description</label><textarea value={productForm.description} onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))} rows={4} placeholder="Describe this product..." className={`${inputCls} resize-none`} /></div>
+                  <div>
+                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Status</label>
+                    <div className="flex gap-2">
+                      {['published', 'draft'].map(s => (<button key={s} type="button" onClick={() => setProductForm(f => ({ ...f, status: s }))} className={`flex-1 py-2.5 rounded-lg border text-sm font-heading capitalize transition-colors ${productForm.status === s ? s === 'published' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/20 bg-white/5 text-white/50' : 'border-white/10 text-white/30'}`}>{s}</button>))}
+                    </div>
+                  </div>
+                  <button onClick={handleSaveProduct} disabled={productSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">{productSaving ? 'Saving...' : 'Save Changes'}</button>
+                </div>
+
+                {productDetail?.variants?.length > 0 && (
+                  <div className="p-4 rounded-xl bg-[#111] border border-white/5">
+                    <h3 className="text-white text-sm font-heading mb-3">Variant Breakdown ({productDetail.variants.length})</h3>
+                    <div className="overflow-x-auto -mx-4 px-4">
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-white/30 font-heading uppercase tracking-wider border-b border-white/5"><th className="text-left py-2 pr-3">Variant</th><th className="text-right py-2 px-2">Cost</th><th className="text-right py-2 px-2">Retail</th><th className="text-right py-2 px-2">Profit</th><th className="text-right py-2 pl-2">Margin</th></tr></thead>
+                        <tbody>
+                          {productDetail.variants.map((v: any, i: number) => (
+                            <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                              <td className="py-2 pr-3"><span className="text-white/60 font-body">{v.color}{v.color && v.size ? ' / ' : ''}{v.size}</span></td>
+                              <td className="text-right py-2 px-2 text-white/40 font-body">{v.cost_price > 0 ? `$${(v.cost_price / 100).toFixed(2)}` : '—'}</td>
+                              <td className="text-right py-2 px-2 text-gold/70 font-heading">${(v.retail_price / 100).toFixed(2)}</td>
+                              <td className="text-right py-2 px-2 text-emerald-400/70 font-body">{v.profit > 0 ? `$${(v.profit / 100).toFixed(2)}` : '—'}</td>
+                              <td className={`text-right py-2 pl-2 font-heading ${v.margin > 20 ? 'text-emerald-400/70' : v.margin > 10 ? 'text-amber-400/70' : 'text-red-400/70'}`}>{v.margin > 0 ? `${v.margin}%` : '—'}</td>
+                            </tr>
                           ))}
-                          {editingProduct.variant_prices.length > 5 && (
-                            <p className="text-white/20 text-[10px] font-body text-center pt-1">+ {editingProduct.variant_prices.length - 5} more variants</p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Markup tools */}
-                    <div className="border-t border-white/5 pt-4">
-                      <span className="text-white/40 text-xs font-heading uppercase tracking-wider block mb-3">Adjust Pricing</span>
-                      <div className="flex gap-2 mb-3">
-                        <button onClick={() => { setPriceMode(priceMode === 'percent' ? 'none' : 'percent'); setPriceValue('') }}
-                          className={`flex-1 py-2.5 rounded-lg border text-xs font-heading transition-colors ${priceMode === 'percent' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/40 hover:text-white/60'}`}>
-                          % Markup
-                        </button>
-                        <button onClick={() => { setPriceMode(priceMode === 'flat' ? 'none' : 'flat'); setPriceValue('') }}
-                          className={`flex-1 py-2.5 rounded-lg border text-xs font-heading transition-colors ${priceMode === 'flat' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/40 hover:text-white/60'}`}>
-                          Flat Price
-                        </button>
-                      </div>
-
-                      {priceMode !== 'none' && (
-                        <div className="space-y-3">
-                          <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30 text-sm">
-                              {priceMode === 'percent' ? '%' : '$'}
-                            </span>
-                            <input type="number" value={priceValue} onChange={e => setPriceValue(e.target.value)}
-                              placeholder={priceMode === 'percent' ? 'e.g. 50 for 50% markup' : 'e.g. 29.99'}
-                              className={`${inputCls} pl-8 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
-                          </div>
-                          <p className="text-white/20 text-[10px] font-body">
-                            {priceMode === 'percent'
-                              ? `This adds ${priceValue || '0'}% on top of current prices for all variants. Standard markup is 40-100%.`
-                              : `This sets ALL variants to $${priceValue || '0'} flat. Best for single-price items like hats.`
-                            }
-                          </p>
-                          {priceMode === 'percent' && priceValue && editingProduct.min_price > 0 && (
-                            <div className="p-3 rounded-lg bg-gold/5 border border-gold/10">
-                              <p className="text-gold/70 text-xs font-heading">Preview: ${(editingProduct.min_price / 100).toFixed(2)} → ${(editingProduct.min_price / 100 * (1 + parseFloat(priceValue || '0') / 100)).toFixed(2)}</p>
-                            </div>
-                          )}
-                          <button onClick={handleBulkPriceUpdate} disabled={priceSaving || !priceValue}
-                            className="w-full py-2.5 rounded-lg bg-gold/20 border border-gold/30 text-gold font-heading text-sm hover:bg-gold/30 transition-colors disabled:opacity-50">
-                            {priceSaving ? 'Updating...' : `Apply ${priceMode === 'percent' ? 'Markup' : 'Price'} to All ${editingProduct.variants_count} Variants`}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <p className="text-white/15 text-[10px] font-body">💡 Tip: Standard POD markup is 40-100% over cost. For premium items (hoodies, Under Armour), 50-80%. For basics (tees, hats), 80-150%.</p>
-                  </div>
-                </div>
-
-                {/* Product info (read-only) */}
-                <details className="border border-white/5 rounded-lg">
-                  <summary className="px-4 py-3 text-white/40 text-xs uppercase tracking-wider font-heading cursor-pointer hover:text-white/60">Product Details (from Printful)</summary>
-                  <div className="p-4 space-y-3 border-t border-white/5">
-                    <div className="flex justify-between">
-                      <span className="text-white/30 text-xs font-heading">Handle</span>
-                      <span className="text-white/60 text-xs font-body">{editingProduct.handle}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-white/30 text-xs font-heading">Variants</span>
-                      <span className="text-white/60 text-xs font-body">{editingProduct.variants_count}</span>
-                    </div>
-                    {editingProduct.options?.map((opt: any) => (
-                      <div key={opt.id}>
-                        <span className="text-white/30 text-xs font-heading block mb-1">{opt.title}</span>
-                        <div className="flex flex-wrap gap-1">
-                          {opt.values?.map((v: string, i: number) => (
-                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-heading border border-white/5">{v}</span>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                    {editingProduct.first_price && (
-                      <div className="flex justify-between">
-                        <span className="text-white/30 text-xs font-heading">Starting Price</span>
-                        <span className="text-gold/60 text-xs font-heading">${(editingProduct.first_price.amount / 100).toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-white/30 text-xs font-heading">Medusa ID</span>
-                      <span className="text-white/30 text-[10px] font-body">{editingProduct.id}</span>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                </details>
+                )}
 
-                {/* Images */}
-                {editingProduct.images?.length > 0 && (
+                {productDetail?.catalog_info && (
                   <details className="border border-white/5 rounded-lg">
-                    <summary className="px-4 py-3 text-white/40 text-xs uppercase tracking-wider font-heading cursor-pointer hover:text-white/60">Images ({editingProduct.images.length})</summary>
-                    <div className="p-4 grid grid-cols-3 gap-2 border-t border-white/5">
-                      {editingProduct.images.map((img: any) => (
-                        <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden bg-[#0a0a0a] border border-white/5">
-                          <img src={img.url} alt="" className="w-full h-full object-cover" />
-                        </div>
-                      ))}
+                    <summary className="px-4 py-3 text-white/40 text-xs uppercase tracking-wider font-heading cursor-pointer hover:text-white/60">Printful Product Info</summary>
+                    <div className="p-4 space-y-2 border-t border-white/5 text-xs font-body">
+                      {productDetail.catalog_info.brand && <div className="flex justify-between"><span className="text-white/30">Brand</span><span className="text-white/60">{productDetail.catalog_info.brand}</span></div>}
+                      {productDetail.catalog_info.model && <div className="flex justify-between"><span className="text-white/30">Model</span><span className="text-white/60">{productDetail.catalog_info.model}</span></div>}
+                      {productDetail.catalog_info.type_name && <div className="flex justify-between"><span className="text-white/30">Type</span><span className="text-white/60">{productDetail.catalog_info.type_name}</span></div>}
+                      {productDetail.catalog_info.description && <p className="text-white/40 mt-2 leading-relaxed">{productDetail.catalog_info.description}</p>}
                     </div>
                   </details>
                 )}
 
-                {/* Live preview link */}
-                <Link href={`/shop/${editingProduct.handle}`} target="_blank"
-                  className="flex items-center gap-2 text-gold/50 text-xs font-heading hover:text-gold transition-colors">
-                  {icons.external} View on live shop
-                </Link>
-
-                {/* Pricing Section */}
-                <div className="border border-gold/20 rounded-xl overflow-hidden">
-                  <div className="px-4 py-3 bg-gold/5 border-b border-gold/10">
-                    <h3 className="text-gold text-xs uppercase tracking-wider font-heading flex items-center gap-2">{icons.payments} Pricing</h3>
-                  </div>
-                  <div className="p-4 space-y-4">
-                    {/* Current price range */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/40 text-xs font-heading">Current Retail</span>
-                      <span className="text-gold font-heading text-sm">
-                        {editingProduct.min_price > 0
-                          ? editingProduct.min_price === editingProduct.max_price
-                            ? `$${(editingProduct.min_price / 100).toFixed(2)}`
-                            : `$${(editingProduct.min_price / 100).toFixed(2)} – $${(editingProduct.max_price / 100).toFixed(2)}`
-                          : 'Not set'}
-                      </span>
-                    </div>
-
-                    {/* Quick markup buttons */}
-                    <div>
-                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Quick Markup (applies to all variants)</label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {[
-                          { label: '+25%', value: 1.25 },
-                          { label: '+50%', value: 1.50 },
-                          { label: '+75%', value: 1.75 },
-                          { label: '2x', value: 2.0 },
-                        ].map(m => (
-                          <button key={m.label} type="button" onClick={async () => {
-                            setProductSaving(true)
-                            try {
-                              await adminPost('/api/go/store', {
-                                action: 'bulk_update_prices',
-                                payload: { product_id: editingProduct.id, markup_type: 'percentage', markup_value: m.value }
-                              })
-                              showToast(`Prices updated: ${m.label}`)
-                              await loadStoreProducts()
-                              // Refresh the editing product data
-                              const fresh = storeProducts.find((p: any) => p.id === editingProduct.id)
-                              if (fresh) setEditingProduct(fresh)
-                            } catch (err: any) { showToast(err.message, 'error') }
-                            finally { setProductSaving(false) }
-                          }}
-                            className="py-2.5 rounded-lg border border-gold/20 text-gold/60 text-xs font-heading hover:bg-gold/10 transition-colors disabled:opacity-30"
-                            disabled={productSaving}>
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p className="text-white/15 text-[10px] font-body mt-1.5">Tip: Industry standard for print-on-demand apparel is 50–100% markup (1.5x–2x). Premium streetwear brands can push 2x+.</p>
-                    </div>
-
-                    {/* Set flat price */}
-                    <div>
-                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Or Set Flat Price (all variants)</label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
-                          <input type="number" id="flatPrice" placeholder="e.g. 35.00" step="0.01"
-                            className={`${inputCls} pl-7 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
-                        </div>
-                        <button type="button" onClick={async () => {
-                          const input = document.getElementById('flatPrice') as HTMLInputElement
-                          const val = parseFloat(input?.value || '0')
-                          if (!val || val <= 0) { showToast('Enter a valid price', 'error'); return }
-                          setProductSaving(true)
-                          try {
-                            await adminPost('/api/go/store', {
-                              action: 'bulk_update_prices',
-                              payload: { product_id: editingProduct.id, markup_type: 'flat', markup_value: val }
-                            })
-                            showToast(`All variants set to $${val.toFixed(2)}`)
-                            await loadStoreProducts()
-                          } catch (err: any) { showToast(err.message, 'error') }
-                          finally { setProductSaving(false) }
-                        }}
-                          className="px-4 py-3 rounded-lg bg-gold/10 border border-gold/20 text-gold text-xs font-heading hover:bg-gold/20 transition-colors disabled:opacity-30"
-                          disabled={productSaving}>
-                          Apply
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Individual variant prices */}
-                    {editingProduct.variant_prices?.length > 0 && editingProduct.variant_prices.length <= 20 && (
-                      <details className="border border-white/5 rounded-lg">
-                        <summary className="px-3 py-2 text-white/30 text-[10px] uppercase tracking-wider font-heading cursor-pointer hover:text-white/50">
-                          Edit Individual Variant Prices ({editingProduct.variant_prices.length})
-                        </summary>
-                        <div className="p-3 space-y-1.5 border-t border-white/5 max-h-60 overflow-y-auto">
-                          {editingProduct.variant_prices.map((vp: any) => (
-                            <div key={vp.id} className="flex items-center gap-2">
-                              <span className="text-white/30 text-[10px] font-heading flex-1 truncate">{vp.title}</span>
-                              <div className="relative w-24 shrink-0">
-                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white/20 text-[10px]">$</span>
-                                <input type="number" step="0.01" defaultValue={(vp.amount / 100).toFixed(2)}
-                                  onBlur={async (e) => {
-                                    const newVal = parseFloat(e.target.value)
-                                    if (!newVal || newVal === vp.amount / 100) return
-                                    try {
-                                      await adminPost('/api/go/store', {
-                                        action: 'update_price',
-                                        payload: { product_id: editingProduct.id, variant_id: vp.id, amount: Math.round(newVal * 100), currency_code: 'usd' }
-                                      })
-                                      showToast('Price updated')
-                                    } catch (err: any) { showToast(err.message, 'error') }
-                                  }}
-                                  className="w-full bg-[#0a0a0a] border border-white/10 rounded px-2 pl-5 py-1.5 text-white/60 text-[11px] font-body focus:border-gold/40 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    )}
-                  </div>
-                </div>
-
-                {/* Save */}
-                <button onClick={handleSaveProduct} disabled={productSaving}
-                  className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors text-base disabled:opacity-50">
-                  {productSaving ? 'Saving...' : 'Save Changes'}
-                </button>
+                <Link href={`/shop/${editingProduct.handle}`} target="_blank" className="flex items-center gap-2 text-gold/50 text-xs font-heading hover:text-gold transition-colors">{icons.external} View on live shop</Link>
               </div>
             )}
             {activeTab === 'customers' && <ComingSoon title="Customer Management" description="Track buyers, manage inquiries, view purchase history, and build your client relationships." icon="customers" />}
