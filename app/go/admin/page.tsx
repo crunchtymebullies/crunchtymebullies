@@ -1174,7 +1174,6 @@ export default function ManagePage() {
                     <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
                       {product.thumbnail ? <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white/10">{icons.store}</div>}
                     </div>
-                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-white font-heading truncate">{product.title}</p>
                       <div className="flex items-center gap-2 mt-0.5">
