@@ -1262,6 +1262,123 @@ export default function ManagePage() {
                   {icons.external} View on live shop
                 </Link>
 
+                {/* Pricing Section */}
+                <div className="border border-gold/20 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 bg-gold/5 border-b border-gold/10">
+                    <h3 className="text-gold text-xs uppercase tracking-wider font-heading flex items-center gap-2">{icons.payments} Pricing</h3>
+                  </div>
+                  <div className="p-4 space-y-4">
+                    {/* Current price range */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/40 text-xs font-heading">Current Retail</span>
+                      <span className="text-gold font-heading text-sm">
+                        {editingProduct.min_price > 0
+                          ? editingProduct.min_price === editingProduct.max_price
+                            ? `$${(editingProduct.min_price / 100).toFixed(2)}`
+                            : `$${(editingProduct.min_price / 100).toFixed(2)} – $${(editingProduct.max_price / 100).toFixed(2)}`
+                          : 'Not set'}
+                      </span>
+                    </div>
+
+                    {/* Quick markup buttons */}
+                    <div>
+                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Quick Markup (applies to all variants)</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { label: '+25%', value: 1.25 },
+                          { label: '+50%', value: 1.50 },
+                          { label: '+75%', value: 1.75 },
+                          { label: '2x', value: 2.0 },
+                        ].map(m => (
+                          <button key={m.label} type="button" onClick={async () => {
+                            setProductSaving(true)
+                            try {
+                              await adminPost('/api/go/store', {
+                                action: 'bulk_update_prices',
+                                payload: { product_id: editingProduct.id, markup_type: 'percentage', markup_value: m.value }
+                              })
+                              showToast(`Prices updated: ${m.label}`)
+                              await loadStoreProducts()
+                              // Refresh the editing product data
+                              const fresh = storeProducts.find((p: any) => p.id === editingProduct.id)
+                              if (fresh) setEditingProduct(fresh)
+                            } catch (err: any) { showToast(err.message, 'error') }
+                            finally { setProductSaving(false) }
+                          }}
+                            className="py-2.5 rounded-lg border border-gold/20 text-gold/60 text-xs font-heading hover:bg-gold/10 transition-colors disabled:opacity-30"
+                            disabled={productSaving}>
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-white/15 text-[10px] font-body mt-1.5">Tip: Industry standard for print-on-demand apparel is 50–100% markup (1.5x–2x). Premium streetwear brands can push 2x+.</p>
+                    </div>
+
+                    {/* Set flat price */}
+                    <div>
+                      <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Or Set Flat Price (all variants)</label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                          <input type="number" id="flatPrice" placeholder="e.g. 35.00" step="0.01"
+                            className={`${inputCls} pl-7 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
+                        </div>
+                        <button type="button" onClick={async () => {
+                          const input = document.getElementById('flatPrice') as HTMLInputElement
+                          const val = parseFloat(input?.value || '0')
+                          if (!val || val <= 0) { showToast('Enter a valid price', 'error'); return }
+                          setProductSaving(true)
+                          try {
+                            await adminPost('/api/go/store', {
+                              action: 'bulk_update_prices',
+                              payload: { product_id: editingProduct.id, markup_type: 'flat', markup_value: val }
+                            })
+                            showToast(`All variants set to $${val.toFixed(2)}`)
+                            await loadStoreProducts()
+                          } catch (err: any) { showToast(err.message, 'error') }
+                          finally { setProductSaving(false) }
+                        }}
+                          className="px-4 py-3 rounded-lg bg-gold/10 border border-gold/20 text-gold text-xs font-heading hover:bg-gold/20 transition-colors disabled:opacity-30"
+                          disabled={productSaving}>
+                          Apply
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Individual variant prices */}
+                    {editingProduct.variant_prices?.length > 0 && editingProduct.variant_prices.length <= 20 && (
+                      <details className="border border-white/5 rounded-lg">
+                        <summary className="px-3 py-2 text-white/30 text-[10px] uppercase tracking-wider font-heading cursor-pointer hover:text-white/50">
+                          Edit Individual Variant Prices ({editingProduct.variant_prices.length})
+                        </summary>
+                        <div className="p-3 space-y-1.5 border-t border-white/5 max-h-60 overflow-y-auto">
+                          {editingProduct.variant_prices.map((vp: any) => (
+                            <div key={vp.id} className="flex items-center gap-2">
+                              <span className="text-white/30 text-[10px] font-heading flex-1 truncate">{vp.title}</span>
+                              <div className="relative w-24 shrink-0">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-white/20 text-[10px]">$</span>
+                                <input type="number" step="0.01" defaultValue={(vp.amount / 100).toFixed(2)}
+                                  onBlur={async (e) => {
+                                    const newVal = parseFloat(e.target.value)
+                                    if (!newVal || newVal === vp.amount / 100) return
+                                    try {
+                                      await adminPost('/api/go/store', {
+                                        action: 'update_price',
+                                        payload: { product_id: editingProduct.id, variant_id: vp.id, amount: Math.round(newVal * 100), currency_code: 'usd' }
+                                      })
+                                      showToast('Price updated')
+                                    } catch (err: any) { showToast(err.message, 'error') }
+                                  }}
+                                  className="w-full bg-[#0a0a0a] border border-white/10 rounded px-2 pl-5 py-1.5 text-white/60 text-[11px] font-body focus:border-gold/40 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                </div>
+
                 {/* Save */}
                 <button onClick={handleSaveProduct} disabled={productSaving}
                   className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors text-base disabled:opacity-50">
