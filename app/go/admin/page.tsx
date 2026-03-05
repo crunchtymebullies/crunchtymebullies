@@ -246,7 +246,7 @@ const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: bool
   { id: 'overview', label: 'Overview', icon: 'overview' },
   { id: 'dogs', label: 'Dogs', icon: 'dogs', badge: true },
   { id: 'services', label: 'Services', icon: 'services', badge: true },
-  { id: 'store', label: 'Store', icon: 'store', comingSoon: true },
+  { id: 'store', label: 'Store', icon: 'store', badge: true },
   { id: 'customers', label: 'Customers', icon: 'customers', comingSoon: true },
   { id: 'payments', label: 'Payments', icon: 'payments', comingSoon: true },
   { id: 'messages', label: 'Messages', icon: 'messages', comingSoon: true },
@@ -354,6 +354,14 @@ export default function ManagePage() {
   const [showDeleteService, setShowDeleteService] = useState(false)
   const [uploadingServiceImg, setUploadingServiceImg] = useState(false)
 
+  // Store state
+  const [storeProducts, setStoreProducts] = useState<any[]>([])
+  const [storeLoading, setStoreLoading] = useState(true)
+  const [storeView, setStoreView] = useState<'list' | 'form'>('list')
+  const [editingProduct, setEditingProduct] = useState<any | null>(null)
+  const [productForm, setProductForm] = useState({ title: '', description: '', status: 'published' })
+  const [productSaving, setProductSaving] = useState(false)
+
   // Session check
   useEffect(() => {
     const saved = sessionStorage.getItem('ct-admin-auth')
@@ -378,6 +386,15 @@ export default function ManagePage() {
   }, [adminFetch, showToast])
 
   useEffect(() => { if (authState === 'authenticated') loadServices() }, [authState, loadServices])
+
+  // Load store products
+  const loadStoreProducts = useCallback(async () => {
+    try { const data = await adminFetch('/api/go/store'); setStoreProducts(data) }
+    catch (err: any) { showToast(err.message, 'error') }
+    finally { setStoreLoading(false) }
+  }, [adminFetch, showToast])
+
+  useEffect(() => { if (authState === 'authenticated') loadStoreProducts() }, [authState, loadStoreProducts])
 
   // Load settings (only once per session to prevent strobe)
   useEffect(() => {
@@ -408,7 +425,7 @@ export default function ManagePage() {
     finally { setAuthLoading(false) }
   }
 
-  const switchTab = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false); if (tab === 'dogs') { setDogView('list'); setEditingDog(null) }; if (tab === 'services') { setServiceView('list'); setEditingService(null) } }
+  const switchTab = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false); if (tab === 'dogs') { setDogView('list'); setEditingDog(null) }; if (tab === 'services') { setServiceView('list'); setEditingService(null) }; if (tab === 'store') { setStoreView('list'); setEditingProduct(null) } }
 
   // ─── Dog CRUD ────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -584,6 +601,30 @@ export default function ManagePage() {
     finally { setUploadingServiceImg(false) }
   }
 
+  // ─── Store Product Edit ──────────────────────────────────────────────────
+  const handleSaveProduct = async () => {
+    if (!editingProduct) return
+    setProductSaving(true)
+    try {
+      await adminPost('/api/go/store', {
+        action: 'update',
+        payload: { id: editingProduct.id, title: productForm.title, description: productForm.description },
+      })
+      showToast(`${productForm.title} updated`)
+      setStoreView('list'); setEditingProduct(null); await loadStoreProducts()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setProductSaving(false) }
+  }
+
+  const toggleProductStatus = async (product: any) => {
+    const next = product.status === 'published' ? 'draft' : 'published'
+    try {
+      await adminPost('/api/go/store', { action: 'set_status', payload: { id: product.id, status: next } })
+      setStoreProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: next } : p))
+      showToast(`${product.title} → ${next}`)
+    } catch (err: any) { showToast(err.message, 'error') }
+  }
+
   // Settings save
   const saveSettings = async () => {
     setSettingsSaving(true)
@@ -698,6 +739,7 @@ export default function ManagePage() {
                   <span>{item.label}</span>
                   {item.badge && item.id === 'dogs' && dogs.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>}
                   {item.badge && item.id === 'services' && services.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{services.length}</span>}
+                  {item.badge && item.id === 'store' && storeProducts.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{storeProducts.length}</span>}
                   {item.comingSoon && <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 font-heading uppercase tracking-wider">Soon</span>}
                   {!item.badge && !item.comingSoon && <span className="ct-indicator" />}
                 </button>
@@ -725,7 +767,8 @@ export default function ManagePage() {
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white/50 hover:text-gold transition-colors">{sidebarOpen ? icons.close : icons.menu}</button>
             {activeTab === 'dogs' && dogView === 'form' && <button onClick={() => { setDogView('list'); setEditingDog(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
             {activeTab === 'services' && serviceView === 'form' && <button onClick={() => { setServiceView('list'); setEditingService(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
-            <h1 className="text-white font-display text-lg flex-1">{activeTab === 'dogs' && dogView === 'form' ? (editingDog ? 'Edit Dog' : 'Add Dog') : activeTab === 'services' && serviceView === 'form' ? (editingService ? 'Edit Service' : 'Add Service') : tabLabel}</h1>
+            {activeTab === 'store' && storeView === 'form' && <button onClick={() => { setStoreView('list'); setEditingProduct(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
+            <h1 className="text-white font-display text-lg flex-1">{activeTab === 'dogs' && dogView === 'form' ? (editingDog ? 'Edit Dog' : 'Add Dog') : activeTab === 'services' && serviceView === 'form' ? (editingService ? 'Edit Service' : 'Add Service') : activeTab === 'store' && storeView === 'form' ? 'Edit Product' : tabLabel}</h1>
             <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center"><span className="text-gold text-[10px] font-heading">CT</span></div>
           </div>
 
@@ -1078,7 +1121,154 @@ export default function ManagePage() {
             )}
 
             {/* COMING SOON TABS */}
-            {activeTab === 'store' && <ComingSoon title="Store & Products" description="Manage your Printful merch, accessories, and supplements. Connect your inventory and set pricing." icon="store" />}
+            {/* STORE LIST */}
+            {activeTab === 'store' && storeView === 'list' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-white text-xl font-display">Store Products <span className="text-white/30 text-sm font-body">({storeProducts.length})</span></h2>
+                    <p className="text-white/40 text-xs font-body mt-0.5">Manage your Printful merchandise — edit titles, descriptions, and visibility</p>
+                  </div>
+                  <Link href="/shop" target="_blank" className="px-3 py-1.5 rounded-lg border border-gold/20 text-gold/60 text-xs font-heading hover:bg-gold/10 transition-colors flex items-center gap-1.5">
+                    {icons.external} <span>View Shop</span>
+                  </Link>
+                </div>
+
+                {storeLoading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading products...</div></div>
+                : storeProducts.length === 0 ? <p className="text-white/30 text-center py-12 font-body">No products found. Products are synced from Printful.</p>
+                : storeProducts.map(product => (
+                  <div key={product.id} onClick={() => {
+                    setEditingProduct(product)
+                    setProductForm({ title: product.title || '', description: product.description || '', status: product.status || 'published' })
+                    setStoreView('form')
+                  }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
+                    <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
+                      {product.thumbnail ? <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white/10">{icons.store}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-heading truncate">{product.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <button onClick={e => { e.stopPropagation(); toggleProductStatus(product) }}>
+                          <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${product.status === 'published' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/10 text-white/40 border-white/20'}`}>
+                            {product.status}
+                          </span>
+                        </button>
+                        <span className="text-white/25 text-xs font-body">{product.variants_count} variants</span>
+                        {product.first_price && <span className="text-gold/50 text-xs font-heading">from ${(product.first_price.amount / 100).toFixed(2)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="p-4 rounded-xl bg-[#111] border border-white/5 mt-6">
+                  <p className="text-white/30 text-xs font-body">Products and variants are synced from <span className="text-gold/50">Printful</span>. To add new products or change variants/pricing, update them in your Printful dashboard and they will sync here.</p>
+                </div>
+              </div>
+            )}
+
+            {/* STORE PRODUCT EDIT FORM */}
+            {activeTab === 'store' && storeView === 'form' && editingProduct && (
+              <div className="max-w-lg mx-auto space-y-5 pb-8">
+                <button onClick={() => { setStoreView('list'); setEditingProduct(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1"><span>{icons.back}</span> Back to products</button>
+                <h2 className="text-white text-xl font-display hidden md:block">Edit Product</h2>
+
+                {/* Product thumbnail */}
+                {editingProduct.thumbnail && (
+                  <div className="relative w-full aspect-video max-w-xs rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10">
+                    <img src={editingProduct.thumbnail} alt={editingProduct.title} className="w-full h-full object-cover" />
+                  </div>
+                )}
+
+                {/* Title */}
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Product Title</label>
+                  <input type="text" value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} className={inputCls} />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Description</label>
+                  <textarea value={productForm.description} onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))} rows={5} placeholder="Describe this product — materials, fit, features..." className={`${inputCls} resize-none`} />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Status</label>
+                  <div className="flex gap-2">
+                    {['published', 'draft'].map(s => (
+                      <button key={s} type="button" onClick={() => setProductForm(f => ({ ...f, status: s }))}
+                        className={`flex-1 py-2.5 rounded-lg border text-sm font-heading capitalize transition-colors ${
+                          productForm.status === s
+                            ? s === 'published' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/20 bg-white/5 text-white/50'
+                            : 'border-white/10 text-white/30 hover:text-white/50'
+                        }`}>{s}</button>
+                    ))}
+                  </div>
+                  <p className="text-white/20 text-[10px] font-body mt-1.5">Draft products are hidden from the shop page</p>
+                </div>
+
+                {/* Product info (read-only) */}
+                <details className="border border-white/5 rounded-lg">
+                  <summary className="px-4 py-3 text-white/40 text-xs uppercase tracking-wider font-heading cursor-pointer hover:text-white/60">Product Details (from Printful)</summary>
+                  <div className="p-4 space-y-3 border-t border-white/5">
+                    <div className="flex justify-between">
+                      <span className="text-white/30 text-xs font-heading">Handle</span>
+                      <span className="text-white/60 text-xs font-body">{editingProduct.handle}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/30 text-xs font-heading">Variants</span>
+                      <span className="text-white/60 text-xs font-body">{editingProduct.variants_count}</span>
+                    </div>
+                    {editingProduct.options?.map((opt: any) => (
+                      <div key={opt.id}>
+                        <span className="text-white/30 text-xs font-heading block mb-1">{opt.title}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {opt.values?.map((v: string, i: number) => (
+                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-white/40 font-heading border border-white/5">{v}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                    {editingProduct.first_price && (
+                      <div className="flex justify-between">
+                        <span className="text-white/30 text-xs font-heading">Starting Price</span>
+                        <span className="text-gold/60 text-xs font-heading">${(editingProduct.first_price.amount / 100).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-white/30 text-xs font-heading">Medusa ID</span>
+                      <span className="text-white/30 text-[10px] font-body">{editingProduct.id}</span>
+                    </div>
+                  </div>
+                </details>
+
+                {/* Images */}
+                {editingProduct.images?.length > 0 && (
+                  <details className="border border-white/5 rounded-lg">
+                    <summary className="px-4 py-3 text-white/40 text-xs uppercase tracking-wider font-heading cursor-pointer hover:text-white/60">Images ({editingProduct.images.length})</summary>
+                    <div className="p-4 grid grid-cols-3 gap-2 border-t border-white/5">
+                      {editingProduct.images.map((img: any) => (
+                        <div key={img.id} className="relative aspect-square rounded-lg overflow-hidden bg-[#0a0a0a] border border-white/5">
+                          <img src={img.url} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+
+                {/* Live preview link */}
+                <Link href={`/shop/${editingProduct.handle}`} target="_blank"
+                  className="flex items-center gap-2 text-gold/50 text-xs font-heading hover:text-gold transition-colors">
+                  {icons.external} View on live shop
+                </Link>
+
+                {/* Save */}
+                <button onClick={handleSaveProduct} disabled={productSaving}
+                  className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors text-base disabled:opacity-50">
+                  {productSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            )}
             {activeTab === 'customers' && <ComingSoon title="Customer Management" description="Track buyers, manage inquiries, view purchase history, and build your client relationships." icon="customers" />}
             {activeTab === 'payments' && <ComingSoon title="Payments" description="Accept deposits, process payments with Stripe, track revenue, and manage payment history." icon="payments" />}
             {activeTab === 'messages' && <ComingSoon title="Messages" description="Communicate with customers, send updates about litters, and manage inquiries all in one place." icon="messages" />}
