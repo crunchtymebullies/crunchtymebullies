@@ -379,6 +379,49 @@ export default function ManagePage() {
     else setAuthState('locked')
   }, [])
 
+  // ─── Browser History Management (Android back button) ────────────────────
+  // Push state on every navigation so the hardware back button goes back
+  // instead of leaving the admin entirely.
+  const pushAdminState = useCallback((tab: Tab, view?: string) => {
+    const state = { tab, view: view || 'list' }
+    history.pushState(state, '', `/go/admin`)
+  }, [])
+
+  // Listen for popstate (back button)
+  useEffect(() => {
+    // Push initial state
+    history.replaceState({ tab: activeTab, view: 'list' }, '', `/go/admin`)
+
+    const onPopState = (e: PopStateEvent) => {
+      const state = e.state as { tab?: Tab; view?: string } | null
+
+      // If sidebar is open, close it first
+      if (sidebarOpen) { setSidebarOpen(false); history.pushState({ tab: activeTab, view: 'list' }, '', `/go/admin`); return }
+
+      // If delete modal is open, close it
+      if (showDelete) { setShowDelete(false); history.pushState({ tab: activeTab, view: 'form' }, '', `/go/admin`); return }
+      if (showDeleteService) { setShowDeleteService(false); history.pushState({ tab: activeTab, view: 'form' }, '', `/go/admin`); return }
+
+      // If in a form view, go back to list
+      if (activeTab === 'dogs' && dogView === 'form') { setDogView('list'); setEditingDog(null); return }
+      if (activeTab === 'services' && serviceView === 'form') { setServiceView('list'); setEditingService(null); return }
+      if (activeTab === 'store' && storeView === 'form') { setStoreView('list'); setEditingProduct(null); setProductDetail(null); return }
+
+      // If on a non-overview tab, go to overview
+      if (activeTab !== 'overview') {
+        setActiveTab('overview')
+        return
+      }
+
+      // If already on overview, let the browser go back naturally
+      // Push a dummy state so the next back actually leaves
+      // (don't prevent default — let user leave if they really want to)
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [activeTab, dogView, serviceView, storeView, sidebarOpen, showDelete, showDeleteService])
+
   // Load dogs
   const loadDogs = useCallback(async () => {
     try { const data = await adminFetch('/api/go/dogs'); setDogs(data) }
@@ -435,7 +478,13 @@ export default function ManagePage() {
     finally { setAuthLoading(false) }
   }
 
-  const switchTab = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false); if (tab === 'dogs') { setDogView('list'); setEditingDog(null) }; if (tab === 'services') { setServiceView('list'); setEditingService(null) }; if (tab === 'store') { setStoreView('list'); setEditingProduct(null) } }
+  const switchTab = (tab: Tab) => {
+    setActiveTab(tab); setSidebarOpen(false)
+    if (tab === 'dogs') { setDogView('list'); setEditingDog(null) }
+    if (tab === 'services') { setServiceView('list'); setEditingService(null) }
+    if (tab === 'store') { setStoreView('list'); setEditingProduct(null) }
+    pushAdminState(tab, 'list')
+  }
 
   // ─── Dog CRUD ────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -863,7 +912,7 @@ export default function ManagePage() {
                 <div>
                   <h3 className="text-white/50 text-xs font-heading uppercase tracking-wider mb-3">Quick Actions</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <button onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }, 50) }} className="p-4 rounded-xl bg-gold/10 border border-gold/20 hover:bg-gold/15 transition-colors text-left"><div className="text-gold mb-2">{icons.plus}</div><p className="text-white text-sm font-heading">Add Dog</p></button>
+                    <button onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(null); setForm(emptyForm); setDogView('form'); pushAdminState('dogs', 'form') }, 50) }} className="p-4 rounded-xl bg-gold/10 border border-gold/20 hover:bg-gold/15 transition-colors text-left"><div className="text-gold mb-2">{icons.plus}</div><p className="text-white text-sm font-heading">Add Dog</p></button>
                     <button onClick={() => switchTab('dogs')} className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors text-left"><div className="text-emerald-400 mb-2">{icons.dogs}</div><p className="text-white text-sm font-heading">Manage Dogs</p></button>
                     <button onClick={() => switchTab('services')} className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors text-left"><div className="text-amber-400 mb-2">{icons.services}</div><p className="text-white text-sm font-heading">Services</p></button>
                     <button onClick={() => switchTab('settings')} className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 transition-colors text-left"><div className="text-blue-400 mb-2">{icons.settings}</div><p className="text-white text-sm font-heading">Settings</p></button>
@@ -885,7 +934,7 @@ export default function ManagePage() {
                   <div>
                     <div className="flex items-center justify-between mb-3"><h3 className="text-white/50 text-xs font-heading uppercase tracking-wider">Recent Dogs</h3><button onClick={() => switchTab('dogs')} className="text-gold/50 text-xs font-heading hover:text-gold transition-colors">View All</button></div>
                     <div className="space-y-2">{dogs.slice(0, 5).map(dog => (
-                      <div key={dog._id} onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }, 50) }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 cursor-pointer transition-colors">
+                      <div key={dog._id} onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form'); pushAdminState('dogs', 'form') }, 50) }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 cursor-pointer transition-colors">
                         <div className="w-10 h-10 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">{getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}</div>
                         <div className="flex-1 min-w-0"><p className="text-white text-sm font-heading truncate">{dog.name}</p><span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${statusColors[dog.status] || statusColors.available}`}>{dog.status}</span></div>
                         <span className="text-white/20 text-xs font-body">{dog.price ? `$${dog.price.toLocaleString()}` : 'Contact'}</span>
@@ -1048,7 +1097,7 @@ export default function ManagePage() {
                 <div className="flex items-center justify-between">
                   <div><h2 className="text-white text-xl font-display">Dogs <span className="text-white/30 text-sm font-body">({dogs.length})</span></h2>
                   {featuredCount > 0 && <p className="text-gold/50 text-xs font-heading mt-0.5">{featuredCount} on homepage</p>}</div>
-                  <button onClick={() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
+                  <button onClick={() => { setEditingDog(null); setForm(emptyForm); setDogView('form'); pushAdminState('dogs', 'form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
                 </div>
                 {dogs.length > 3 && (
                   <div className="flex gap-2">
@@ -1061,7 +1110,7 @@ export default function ManagePage() {
                 {loading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading dogs...</div></div>
                 : filtered.length === 0 ? <p className="text-white/30 text-center py-12 font-body">{dogs.length === 0 ? 'No dogs yet. Tap + to add one.' : 'No dogs match your filter.'}</p>
                 : filtered.map(dog => (
-                  <div key={dog._id} onClick={() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }}
+                  <div key={dog._id} onClick={() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form'); pushAdminState('dogs', 'form') }}
                     className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
                     <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
                       {getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}</div>
@@ -1113,12 +1162,12 @@ export default function ManagePage() {
                 <div className="flex items-center justify-between">
                   <div><h2 className="text-white text-xl font-display">Services <span className="text-white/30 text-sm font-body">({services.length})</span></h2>
                   <p className="text-white/40 text-xs font-body mt-0.5">Manage the services shown on your Services page</p></div>
-                  <button onClick={() => { setEditingService(null); setServiceForm(emptyServiceForm); setServiceView('form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
+                  <button onClick={() => { setEditingService(null); setServiceForm(emptyServiceForm); setServiceView('form'); pushAdminState('services', 'form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
                 </div>
                 {servicesLoading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading services...</div></div>
                 : services.length === 0 ? <p className="text-white/30 text-center py-12 font-body">No services yet. Tap + to add one.</p>
                 : services.map(svc => (
-                  <div key={svc._id} onClick={() => { setEditingService(svc); setServiceForm(serviceToForm(svc)); setServiceView('form') }}
+                  <div key={svc._id} onClick={() => { setEditingService(svc); setServiceForm(serviceToForm(svc)); setServiceView('form'); pushAdminState('services', 'form') }}
                     className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
                     <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5 flex items-center justify-center">
                       {getImageUrl(svc.image) ? <img src={getImageUrl(svc.image)} alt={svc.title} className="w-full h-full object-cover" /> : <span className="text-white/10">{icons.services}</span>}
@@ -1227,7 +1276,7 @@ export default function ManagePage() {
                   <div key={product.id} onClick={() => {
                     setEditingProduct(product)
                     setProductForm({ title: product.title || '', description: product.description || '', status: product.status || 'published' })
-                    setProductDetail(null); setMarkupValue(''); setStoreView('form')
+                    setProductDetail(null); setMarkupValue(''); setStoreView('form'); pushAdminState('store', 'form')
                     loadProductDetail(product)
                   }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
                     <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
@@ -1362,7 +1411,7 @@ export default function ManagePage() {
       {/* MOBILE BOTTOM NAV */}
       <div className="ct-mobile-nav">
         {mobileNavItems.map(item => (
-          <button key={item.id} onClick={() => item.id === 'more' ? setSidebarOpen(true) : switchTab(item.id as Tab)}
+          <button key={item.id} onClick={() => item.id === 'more' ? (setSidebarOpen(true), pushAdminState(activeTab, 'sidebar')) : switchTab(item.id as Tab)}
             className={`ct-mobile-btn font-heading ${item.id !== 'more' && activeTab === item.id ? 'active' : ''}`}>
             {icons[item.icon]}<span>{item.label}</span>
           </button>
