@@ -27,12 +27,12 @@ export default function ProductDetail({ product }: { product: StoreProduct }) {
     ...(product.images?.map(i => i.url) || []),
   ].filter((v, i, a) => a.indexOf(v) === i) // dedupe
 
-  // Find matching variant
+  // Find matching variant — Medusa v2 returns options as array of {value, option_id} objects
   const matchedVariant = product.variants?.find(v => {
-    if (!v.options) return false
-    return Object.entries(selectedOptions).every(([, val]) =>
-      Object.values(v.options).includes(val)
-    )
+    const varOpts = Array.isArray(v.options)
+      ? v.options.map((o: any) => o.value)
+      : Object.values(v.options || {})
+    return Object.values(selectedOptions).every(val => varOpts.includes(val))
   }) || product.variants?.[0]
 
   const price = matchedVariant?.calculated_price

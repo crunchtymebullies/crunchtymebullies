@@ -54,7 +54,7 @@ export interface StoreVariant {
   id: string
   title: string
   sku: string | null
-  options: Record<string, string>
+  options: any[] | Record<string, string>
   calculated_price?: {
     calculated_amount: number
     currency_code: string
