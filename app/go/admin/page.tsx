@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'dogs' | 'store' | 'customers' | 'payments' | 'messages' | 'settings' | 'analytics'
+type Tab = 'overview' | 'dogs' | 'services' | 'store' | 'customers' | 'payments' | 'messages' | 'settings' | 'analytics'
 type ToastType = { message: string; type: 'success' | 'error'; id: number }
 
 interface DogAdmin {
@@ -31,6 +31,21 @@ const emptyForm: DogFormData = {
   dob: '', weight: '', height: '', status: 'available', price: '',
   featured: false, personality: '', description: '', mainImage: null, gallery: [],
   sire: '', dam: '', bloodline: '', registry: '', registrationNumber: '',
+}
+
+// ─── Service Types ────────────────────────────────────────────────────────────
+interface ServiceAdmin {
+  _id: string; title: string; slug?: { _type: string; current: string }
+  description?: string; price?: string; featured?: boolean; order?: number
+  image?: any
+}
+
+interface ServiceFormData {
+  title: string; description: string; price: string; featured: boolean; order: string; image: any | null
+}
+
+const emptyServiceForm: ServiceFormData = {
+  title: '', description: '', price: '', featured: false, order: '0', image: null,
 }
 
 // ─── Dropdown Data ───────────────────────────────────────────────────────────
@@ -207,6 +222,7 @@ const icons = {
   overview: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>,
   dogs: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M10 5.172C10 3.782 8.423 2.679 6.5 3c-2.823.47-4.113 6.006-4 7 .08.703 1.725 1.722 3.656 1 1.261-.472 1.96-1.45 2.344-2.5"/><path d="M14.267 5.172c0-1.39 1.577-2.493 3.5-2.172 2.823.47 4.113 6.006 4 7-.08.703-1.725 1.722-3.656 1-1.261-.472-1.855-1.45-2.239-2.5"/><path d="M8 14v.5"/><path d="M16 14v.5"/><path d="M11.25 16.25h1.5L12 17l-.75-.75Z"/><path d="M4.42 11.247A13.152 13.152 0 0 0 4 14.556C4 18.728 7.582 21 12 21s8-2.272 8-6.444c0-1.061-.162-2.2-.493-3.309m-9.243-6.082A8.801 8.801 0 0 1 12 5c.78 0 1.5.108 2.161.306"/></svg>,
   store: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+  services: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
   customers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   payments: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
   messages: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
@@ -229,7 +245,8 @@ const icons = {
 const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: boolean; comingSoon?: boolean }[] = [
   { id: 'overview', label: 'Overview', icon: 'overview' },
   { id: 'dogs', label: 'Dogs', icon: 'dogs', badge: true },
-  { id: 'store', label: 'Store', icon: 'store', comingSoon: true },
+  { id: 'services', label: 'Services', icon: 'services', badge: true },
+  { id: 'store', label: 'Store', icon: 'store', badge: true },
   { id: 'customers', label: 'Customers', icon: 'customers', comingSoon: true },
   { id: 'payments', label: 'Payments', icon: 'payments', comingSoon: true },
   { id: 'messages', label: 'Messages', icon: 'messages', comingSoon: true },
@@ -327,12 +344,83 @@ export default function ManagePage() {
   const [settingsSaving, setSettingsSaving] = useState(false)
   const settingsLoadedRef = useRef(false)
 
+  // Services state
+  const [services, setServices] = useState<ServiceAdmin[]>([])
+  const [servicesLoading, setServicesLoading] = useState(true)
+  const [serviceView, setServiceView] = useState<'list' | 'form'>('list')
+  const [editingService, setEditingService] = useState<ServiceAdmin | null>(null)
+  const [serviceForm, setServiceForm] = useState<ServiceFormData>(emptyServiceForm)
+  const [serviceSaving, setServiceSaving] = useState(false)
+  const [showDeleteService, setShowDeleteService] = useState(false)
+  const [uploadingServiceImg, setUploadingServiceImg] = useState(false)
+
+  // Store state
+  const [storeProducts, setStoreProducts] = useState<any[]>([])
+  const [storeLoading, setStoreLoading] = useState(true)
+  const [storeView, setStoreView] = useState<'list' | 'form'>('list')
+  const [editingProduct, setEditingProduct] = useState<any | null>(null)
+  const [productForm, setProductForm] = useState({ title: '', description: '', status: 'published' })
+  const [productSaving, setProductSaving] = useState(false)
+  const [productDetail, setProductDetail] = useState<any | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [markupType, setMarkupType] = useState<'percentage' | 'fixed'>('percentage')
+  const [markupValue, setMarkupValue] = useState('')
+  const [pricingLoading, setPricingLoading] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<any | null>(null)
+  const [priceMode, setPriceMode] = useState<'none' | 'percent' | 'flat'>('none')
+  const [priceValue, setPriceValue] = useState('')
+  const [priceSaving, setPriceSaving] = useState(false)
+
   // Session check
   useEffect(() => {
     const saved = sessionStorage.getItem('ct-admin-auth')
     if (saved) { setPassword(saved); setAuthState('authenticated') }
     else setAuthState('locked')
   }, [])
+
+  // ─── Browser History Management (Android back button) ────────────────────
+  // Push state on every navigation so the hardware back button goes back
+  // instead of leaving the admin entirely.
+  const pushAdminState = useCallback((tab: Tab, view?: string) => {
+    const state = { tab, view: view || 'list' }
+    history.pushState(state, '', `/go/admin`)
+  }, [])
+
+  // Listen for popstate (back button)
+  useEffect(() => {
+    // Push initial state
+    history.replaceState({ tab: activeTab, view: 'list' }, '', `/go/admin`)
+
+    const onPopState = (e: PopStateEvent) => {
+      const state = e.state as { tab?: Tab; view?: string } | null
+
+      // If sidebar is open, close it first
+      if (sidebarOpen) { setSidebarOpen(false); history.pushState({ tab: activeTab, view: 'list' }, '', `/go/admin`); return }
+
+      // If delete modal is open, close it
+      if (showDelete) { setShowDelete(false); history.pushState({ tab: activeTab, view: 'form' }, '', `/go/admin`); return }
+      if (showDeleteService) { setShowDeleteService(false); history.pushState({ tab: activeTab, view: 'form' }, '', `/go/admin`); return }
+
+      // If in a form view, go back to list
+      if (activeTab === 'dogs' && dogView === 'form') { setDogView('list'); setEditingDog(null); return }
+      if (activeTab === 'services' && serviceView === 'form') { setServiceView('list'); setEditingService(null); return }
+      if (activeTab === 'store' && storeView === 'form') { setStoreView('list'); setEditingProduct(null); setProductDetail(null); return }
+
+      // If on a non-overview tab, go to overview
+      if (activeTab !== 'overview') {
+        setActiveTab('overview')
+        return
+      }
+
+      // If already on overview, let the browser go back naturally
+      // Push a dummy state so the next back actually leaves
+      // (don't prevent default — let user leave if they really want to)
+    }
+
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, [activeTab, dogView, serviceView, storeView, sidebarOpen, showDelete, showDeleteService])
 
   // Load dogs
   const loadDogs = useCallback(async () => {
@@ -342,6 +430,24 @@ export default function ManagePage() {
   }, [adminFetch, showToast])
 
   useEffect(() => { if (authState === 'authenticated') loadDogs() }, [authState, loadDogs])
+
+  // Load services
+  const loadServices = useCallback(async () => {
+    try { const data = await adminFetch('/api/go/services'); setServices(data) }
+    catch (err: any) { showToast(err.message, 'error') }
+    finally { setServicesLoading(false) }
+  }, [adminFetch, showToast])
+
+  useEffect(() => { if (authState === 'authenticated') loadServices() }, [authState, loadServices])
+
+  // Load store products
+  const loadStoreProducts = useCallback(async () => {
+    try { const data = await adminFetch('/api/go/store'); setStoreProducts(data) }
+    catch (err: any) { showToast(err.message, 'error') }
+    finally { setStoreLoading(false) }
+  }, [adminFetch, showToast])
+
+  useEffect(() => { if (authState === 'authenticated') loadStoreProducts() }, [authState, loadStoreProducts])
 
   // Load settings (only once per session to prevent strobe)
   useEffect(() => {
@@ -372,7 +478,13 @@ export default function ManagePage() {
     finally { setAuthLoading(false) }
   }
 
-  const switchTab = (tab: Tab) => { setActiveTab(tab); setSidebarOpen(false); if (tab === 'dogs') { setDogView('list'); setEditingDog(null) } }
+  const switchTab = (tab: Tab) => {
+    setActiveTab(tab); setSidebarOpen(false)
+    if (tab === 'dogs') { setDogView('list'); setEditingDog(null) }
+    if (tab === 'services') { setServiceView('list'); setEditingService(null) }
+    if (tab === 'store') { setStoreView('list'); setEditingProduct(null) }
+    pushAdminState(tab, 'list')
+  }
 
   // ─── Dog CRUD ────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -495,6 +607,147 @@ export default function ManagePage() {
     showToast('Main photo swapped')
   }
 
+  // ─── Service CRUD ─────────────────────────────────────────────────────────
+  const serviceToForm = (svc: ServiceAdmin): ServiceFormData => ({
+    title: svc.title || '', description: svc.description || '',
+    price: svc.price || '', featured: svc.featured || false,
+    order: svc.order != null ? String(svc.order) : '0', image: svc.image || null,
+  })
+
+  const handleSaveService = async () => {
+    if (!serviceForm.title.trim()) { showToast('Title is required', 'error'); return }
+    setServiceSaving(true)
+    try {
+      const slug = serviceForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      const payload: Record<string, any> = {
+        title: serviceForm.title.trim(),
+        slug: { _type: 'slug', current: slug },
+        description: serviceForm.description || '',
+        price: serviceForm.price || '',
+        featured: serviceForm.featured,
+        order: serviceForm.order ? Number(serviceForm.order) : 0,
+        image: serviceForm.image || undefined,
+      }
+      if (editingService) {
+        payload._id = editingService._id
+        await adminPost('/api/go/services', { action: 'update', payload })
+        showToast(`${serviceForm.title} updated`)
+      } else {
+        await adminPost('/api/go/services', { action: 'create', payload })
+        showToast(`${serviceForm.title} added`)
+      }
+      setServiceView('list'); setEditingService(null); await loadServices()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setServiceSaving(false) }
+  }
+
+  const handleDeleteService = async () => {
+    if (!editingService) return; setShowDeleteService(false); setServiceSaving(true)
+    try {
+      await adminPost('/api/go/services', { action: 'delete', payload: { _id: editingService._id } })
+      showToast(`${editingService.title} deleted`); setServiceView('list'); setEditingService(null); await loadServices()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setServiceSaving(false) }
+  }
+
+  const uploadServiceImage = async (file: File) => {
+    setUploadingServiceImg(true)
+    try {
+      const result = await adminUpload(file, serviceForm.title || 'service')
+      setServiceForm(f => ({ ...f, image: { _type: 'image', asset: { _type: 'reference', _ref: result._id } } }))
+      showToast('Image uploaded')
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setUploadingServiceImg(false) }
+  }
+
+  // ─── Store Product Edit ──────────────────────────────────────────────────
+  const handleSaveProduct = async () => {
+    if (!editingProduct) return
+    setProductSaving(true)
+    try {
+      await adminPost('/api/go/store', {
+        action: 'update',
+        payload: { id: editingProduct.id, title: productForm.title, description: productForm.description, status: productForm.status },
+      })
+      showToast(`${productForm.title} updated`)
+      setStoreView('list'); setEditingProduct(null); setProductDetail(null); await loadStoreProducts()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setProductSaving(false) }
+  }
+
+  const toggleProductStatus = async (product: any) => {
+    const next = product.status === 'published' ? 'draft' : 'published'
+    try {
+      await adminPost('/api/go/store', { action: 'set_status', payload: { id: product.id, status: next } })
+      setStoreProducts(prev => prev.map(p => p.id === product.id ? { ...p, status: next } : p))
+      showToast(`${product.title} → ${next}`)
+    } catch (err: any) { showToast(err.message, 'error') }
+  }
+
+  const loadProductDetail = async (product: any) => {
+    setDetailLoading(true)
+    try {
+      const data = await adminPost('/api/go/store', {
+        action: 'get_detail',
+        payload: { id: product.id, printful_id: product.printful_id },
+      })
+      setProductDetail(data)
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setDetailLoading(false) }
+  }
+
+  const handleBulkPrice = async () => {
+    if (!editingProduct || !markupValue) return
+    setPricingLoading(true)
+    try {
+      const val = markupType === 'fixed' ? Math.round(parseFloat(markupValue) * 100) : parseFloat(markupValue)
+      const result = await adminPost('/api/go/store', {
+        action: 'bulk_price',
+        payload: { id: editingProduct.id, printful_id: editingProduct.printful_id, markup_type: markupType, markup_value: val },
+      })
+      showToast(`Updated ${result.updated} variant prices`)
+      await loadProductDetail(editingProduct)
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setPricingLoading(false) }
+  }
+
+  const handleSyncPrintful = async () => {
+    setSyncing(true); setSyncResult(null)
+    try {
+      const result = await adminPost('/api/go/store', { action: 'sync_printful', payload: {} })
+      setSyncResult(result)
+      if (result.synced > 0) { showToast(`Synced ${result.synced} new products!`); await loadStoreProducts() }
+      else showToast('Everything is up to date')
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setSyncing(false) }
+  }
+
+  const handleBulkPriceUpdate = async () => {
+    if (!editingProduct || !priceValue) return
+    setPriceSaving(true)
+    try {
+      const val = parseFloat(priceValue)
+      if (isNaN(val) || val <= 0) { showToast('Enter a valid number', 'error'); setPriceSaving(false); return }
+
+      if (priceMode === 'percent') {
+        await adminPost('/api/go/store', {
+          action: 'bulk_update_prices',
+          payload: { product_id: editingProduct.id, mode: 'add_percent', value: val },
+        })
+        showToast(`All variant prices increased by ${val}%`)
+      } else if (priceMode === 'flat') {
+        await adminPost('/api/go/store', {
+          action: 'bulk_update_prices',
+          payload: { product_id: editingProduct.id, mode: 'set', value: val },
+        })
+        showToast(`All variants set to $${val.toFixed(2)}`)
+      }
+      setPriceMode('none'); setPriceValue('')
+      await loadStoreProducts()
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setPriceSaving(false) }
+  }
+
   // Settings save
   const saveSettings = async () => {
     setSettingsSaving(true)
@@ -607,7 +860,9 @@ export default function ManagePage() {
                 <button key={item.id} onClick={() => switchTab(item.id)} className={`ct-nav-item w-full font-heading ${activeTab === item.id ? 'active' : ''}`}>
                   <span className="ct-nav-icon">{icons[item.icon]}</span>
                   <span>{item.label}</span>
-                  {item.badge && dogs.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>}
+                  {item.badge && item.id === 'dogs' && dogs.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{dogs.length}</span>}
+                  {item.badge && item.id === 'services' && services.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{services.length}</span>}
+                  {item.badge && item.id === 'store' && storeProducts.length > 0 && <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-gold/10 text-gold/60 font-heading">{storeProducts.length}</span>}
                   {item.comingSoon && <span className="ml-auto text-[8px] px-1.5 py-0.5 rounded-full bg-white/5 text-white/20 font-heading uppercase tracking-wider">Soon</span>}
                   {!item.badge && !item.comingSoon && <span className="ct-indicator" />}
                 </button>
@@ -634,7 +889,9 @@ export default function ManagePage() {
           <div className="ct-mobile-header">
             <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white/50 hover:text-gold transition-colors">{sidebarOpen ? icons.close : icons.menu}</button>
             {activeTab === 'dogs' && dogView === 'form' && <button onClick={() => { setDogView('list'); setEditingDog(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
-            <h1 className="text-white font-display text-lg flex-1">{activeTab === 'dogs' && dogView === 'form' ? (editingDog ? 'Edit Dog' : 'Add Dog') : tabLabel}</h1>
+            {activeTab === 'services' && serviceView === 'form' && <button onClick={() => { setServiceView('list'); setEditingService(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
+            {activeTab === 'store' && storeView === 'form' && <button onClick={() => { setStoreView('list'); setEditingProduct(null) }} className="text-white/50 hover:text-gold transition-colors">{icons.back}</button>}
+            <h1 className="text-white font-display text-lg flex-1">{activeTab === 'dogs' && dogView === 'form' ? (editingDog ? 'Edit Dog' : 'Add Dog') : activeTab === 'services' && serviceView === 'form' ? (editingService ? 'Edit Service' : 'Add Service') : activeTab === 'store' && storeView === 'form' ? 'Edit Product' : tabLabel}</h1>
             <div className="w-7 h-7 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center"><span className="text-gold text-[10px] font-heading">CT</span></div>
           </div>
 
@@ -655,10 +912,10 @@ export default function ManagePage() {
                 <div>
                   <h3 className="text-white/50 text-xs font-heading uppercase tracking-wider mb-3">Quick Actions</h3>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <button onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }, 50) }} className="p-4 rounded-xl bg-gold/10 border border-gold/20 hover:bg-gold/15 transition-colors text-left"><div className="text-gold mb-2">{icons.plus}</div><p className="text-white text-sm font-heading">Add Dog</p></button>
+                    <button onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(null); setForm(emptyForm); setDogView('form'); pushAdminState('dogs', 'form') }, 50) }} className="p-4 rounded-xl bg-gold/10 border border-gold/20 hover:bg-gold/15 transition-colors text-left"><div className="text-gold mb-2">{icons.plus}</div><p className="text-white text-sm font-heading">Add Dog</p></button>
                     <button onClick={() => switchTab('dogs')} className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors text-left"><div className="text-emerald-400 mb-2">{icons.dogs}</div><p className="text-white text-sm font-heading">Manage Dogs</p></button>
+                    <button onClick={() => switchTab('services')} className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors text-left"><div className="text-amber-400 mb-2">{icons.services}</div><p className="text-white text-sm font-heading">Services</p></button>
                     <button onClick={() => switchTab('settings')} className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 transition-colors text-left"><div className="text-blue-400 mb-2">{icons.settings}</div><p className="text-white text-sm font-heading">Settings</p></button>
-                    <Link href="/go" className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors text-left"><div className="text-purple-400 mb-2">{icons.checklist}</div><p className="text-white text-sm font-heading">Checklist</p></Link>
                   </div>
                 </div>
                 <div>
@@ -677,7 +934,7 @@ export default function ManagePage() {
                   <div>
                     <div className="flex items-center justify-between mb-3"><h3 className="text-white/50 text-xs font-heading uppercase tracking-wider">Recent Dogs</h3><button onClick={() => switchTab('dogs')} className="text-gold/50 text-xs font-heading hover:text-gold transition-colors">View All</button></div>
                     <div className="space-y-2">{dogs.slice(0, 5).map(dog => (
-                      <div key={dog._id} onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }, 50) }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 cursor-pointer transition-colors">
+                      <div key={dog._id} onClick={() => { switchTab('dogs'); setTimeout(() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form'); pushAdminState('dogs', 'form') }, 50) }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 cursor-pointer transition-colors">
                         <div className="w-10 h-10 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">{getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}</div>
                         <div className="flex-1 min-w-0"><p className="text-white text-sm font-heading truncate">{dog.name}</p><span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${statusColors[dog.status] || statusColors.available}`}>{dog.status}</span></div>
                         <span className="text-white/20 text-xs font-body">{dog.price ? `$${dog.price.toLocaleString()}` : 'Contact'}</span>
@@ -840,7 +1097,7 @@ export default function ManagePage() {
                 <div className="flex items-center justify-between">
                   <div><h2 className="text-white text-xl font-display">Dogs <span className="text-white/30 text-sm font-body">({dogs.length})</span></h2>
                   {featuredCount > 0 && <p className="text-gold/50 text-xs font-heading mt-0.5">{featuredCount} on homepage</p>}</div>
-                  <button onClick={() => { setEditingDog(null); setForm(emptyForm); setDogView('form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
+                  <button onClick={() => { setEditingDog(null); setForm(emptyForm); setDogView('form'); pushAdminState('dogs', 'form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
                 </div>
                 {dogs.length > 3 && (
                   <div className="flex gap-2">
@@ -853,7 +1110,7 @@ export default function ManagePage() {
                 {loading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading dogs...</div></div>
                 : filtered.length === 0 ? <p className="text-white/30 text-center py-12 font-body">{dogs.length === 0 ? 'No dogs yet. Tap + to add one.' : 'No dogs match your filter.'}</p>
                 : filtered.map(dog => (
-                  <div key={dog._id} onClick={() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form') }}
+                  <div key={dog._id} onClick={() => { setEditingDog(dog); setForm(dogToForm(dog)); setDogView('form'); pushAdminState('dogs', 'form') }}
                     className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
                     <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
                       {getImageUrl(dog.mainImage) && <img src={getImageUrl(dog.mainImage)} alt={dog.name} className="w-full h-full object-cover" />}</div>
@@ -899,8 +1156,250 @@ export default function ManagePage() {
               </div>
             )}
 
+            {/* SERVICES LIST */}
+            {activeTab === 'services' && serviceView === 'list' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div><h2 className="text-white text-xl font-display">Services <span className="text-white/30 text-sm font-body">({services.length})</span></h2>
+                  <p className="text-white/40 text-xs font-body mt-0.5">Manage the services shown on your Services page</p></div>
+                  <button onClick={() => { setEditingService(null); setServiceForm(emptyServiceForm); setServiceView('form'); pushAdminState('services', 'form') }} className="w-11 h-11 rounded-full bg-gold text-[#0a0a0a] text-2xl font-bold flex items-center justify-center hover:bg-gold/90 transition-colors shadow-lg shadow-gold/20">+</button>
+                </div>
+                {servicesLoading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading services...</div></div>
+                : services.length === 0 ? <p className="text-white/30 text-center py-12 font-body">No services yet. Tap + to add one.</p>
+                : services.map(svc => (
+                  <div key={svc._id} onClick={() => { setEditingService(svc); setServiceForm(serviceToForm(svc)); setServiceView('form'); pushAdminState('services', 'form') }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
+                    <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5 flex items-center justify-center">
+                      {getImageUrl(svc.image) ? <img src={getImageUrl(svc.image)} alt={svc.title} className="w-full h-full object-cover" /> : <span className="text-white/10">{icons.services}</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-heading truncate">{svc.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        {svc.price && <span className="text-gold/60 text-xs font-heading">{svc.price}</span>}
+                        {svc.featured && <span className="text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border bg-gold/10 text-gold/60 border-gold/20">Featured</span>}
+                      </div>
+                    </div>
+                    <span className="text-white/15 text-xs font-heading shrink-0">#{svc.order ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* SERVICE FORM */}
+            {activeTab === 'services' && serviceView === 'form' && (
+              <div className="max-w-lg mx-auto space-y-5 pb-8">
+                <button onClick={() => { setServiceView('list'); setEditingService(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1"><span>{icons.back}</span> Back to list</button>
+                <h2 className="text-white text-xl font-display hidden md:block">{editingService ? 'Edit Service' : 'Add New Service'}</h2>
+
+                {/* Title */}
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Title *</label>
+                <input type="text" value={serviceForm.title} onChange={e => setServiceForm(f => ({ ...f, title: e.target.value }))} placeholder="e.g. Stud Service" className={inputCls} /></div>
+
+                {/* Image */}
+                <div>
+                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Image</label>
+                  {serviceForm.image ? (
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-[#0a0a0a] border border-white/10 group max-w-xs">
+                      <img src={getImageUrl(serviceForm.image)} alt="Service" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-3 transition-opacity">
+                        <label className="cursor-pointer text-gold text-xs font-heading px-3 py-1.5 rounded-lg border border-gold/30 hover:bg-gold/10">Change<input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadServiceImage(e.target.files[0])} /></label>
+                        <button type="button" onClick={() => setServiceForm(f => ({ ...f, image: null }))} className="text-red-400 text-xs font-heading px-3 py-1.5 rounded-lg border border-red-500/30 hover:bg-red-500/10">Remove</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className={`block w-full py-6 border-2 border-dashed border-gold/20 rounded-lg text-center cursor-pointer hover:border-gold/40 transition-colors ${uploadingServiceImg ? 'animate-pulse' : ''}`}>
+                      <span className="text-gold/60 font-body text-sm">{uploadingServiceImg ? 'Uploading...' : '+ Upload Image (optional)'}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadServiceImage(e.target.files[0])} disabled={uploadingServiceImg} />
+                    </label>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Short Description</label>
+                <textarea value={serviceForm.description} onChange={e => setServiceForm(f => ({ ...f, description: e.target.value }))} placeholder="Brief description of this service..." rows={3} className={`${inputCls} resize-none`} /></div>
+
+                {/* Price + Order */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Price / Range</label>
+                  <input type="text" value={serviceForm.price} onChange={e => setServiceForm(f => ({ ...f, price: e.target.value }))} placeholder="e.g. $500 or Contact for pricing" className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Display Order</label>
+                  <input type="number" value={serviceForm.order} onChange={e => setServiceForm(f => ({ ...f, order: e.target.value }))} placeholder="0" className={`${inputCls} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} /></div>
+                </div>
+
+                {/* Featured Toggle */}
+                <div className="flex items-center justify-between py-2">
+                  <div><p className="text-white text-sm font-heading">Featured</p><p className="text-white/30 text-xs font-body">Highlighted on the services page</p></div>
+                  <button type="button" onClick={() => setServiceForm(f => ({ ...f, featured: !f.featured }))}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${serviceForm.featured ? 'bg-gold' : 'bg-white/10'}`}>
+                    <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${serviceForm.featured ? 'left-6' : 'left-1'}`} /></button>
+                </div>
+
+                {/* Save */}
+                <button onClick={handleSaveService} disabled={serviceSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors text-base disabled:opacity-50">
+                  {serviceSaving ? 'Saving...' : editingService ? 'Save Changes' : 'Add Service'}</button>
+
+                {editingService && <button onClick={() => setShowDeleteService(true)} disabled={serviceSaving} className="w-full py-3 border border-red-500/30 text-red-400 rounded-lg hover:bg-red-500/10 transition-colors text-sm font-heading">Delete {editingService.title}</button>}
+                {showDeleteService && editingService && <ConfirmModal title={`Delete ${editingService.title}?`} message="This permanently removes this service from the site." onConfirm={handleDeleteService} onCancel={() => setShowDeleteService(false)} />}
+              </div>
+            )}
+
             {/* COMING SOON TABS */}
-            {activeTab === 'store' && <ComingSoon title="Store & Products" description="Manage your Printful merch, accessories, and supplements. Connect your inventory and set pricing." icon="store" />}
+            {/* STORE LIST */}
+            {activeTab === 'store' && storeView === 'list' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h2 className="text-white text-xl font-display">Store Products <span className="text-white/30 text-sm font-body">({storeProducts.length})</span></h2>
+                    <p className="text-white/40 text-xs font-body mt-0.5">Edit products, set pricing, manage visibility</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleSyncPrintful} disabled={syncing}
+                      className="px-3 py-1.5 rounded-lg border border-gold/20 text-gold/60 text-xs font-heading hover:bg-gold/10 transition-colors flex items-center gap-1.5 disabled:opacity-50">
+                      {syncing ? 'Syncing...' : <>{icons.down} Sync Printful</>}
+                    </button>
+                    <Link href="/shop" target="_blank" className="px-3 py-1.5 rounded-lg border border-white/10 text-white/40 text-xs font-heading hover:text-gold hover:border-gold/20 transition-colors flex items-center gap-1.5">
+                      {icons.external} Shop
+                    </Link>
+                  </div>
+                </div>
+
+                {syncResult && (
+                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-body">
+                    Sync: {syncResult.synced} new, {syncResult.skipped} existing, {syncResult.total} total
+                    {syncResult.new_products?.length > 0 && <span className="block mt-1 text-emerald-400">New: {syncResult.new_products.join(', ')}</span>}
+                  </div>
+                )}
+
+                {storeLoading ? <div className="text-center py-12"><div className="text-gold animate-pulse font-display">Loading products...</div></div>
+                : storeProducts.length === 0 ? <p className="text-white/30 text-center py-12 font-body">No products. Hit Sync Printful to import.</p>
+                : storeProducts.map(product => (
+                  <div key={product.id} onClick={() => {
+                    setEditingProduct(product)
+                    setProductForm({ title: product.title || '', description: product.description || '', status: product.status || 'published' })
+                    setProductDetail(null); setMarkupValue(''); setStoreView('form'); pushAdminState('store', 'form')
+                    loadProductDetail(product)
+                  }} className="flex items-center gap-3 p-3 rounded-xl bg-[#111] border border-white/5 hover:border-gold/20 transition-colors cursor-pointer active:bg-[#161616]">
+                    <div className="w-14 h-14 rounded-lg bg-[#0a0a0a] overflow-hidden shrink-0 border border-white/5">
+                      {product.thumbnail ? <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white/10">{icons.store}</div>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-heading truncate">{product.title}</p>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        <button onClick={e => { e.stopPropagation(); toggleProductStatus(product) }}>
+                          <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${product.status === 'published' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/10 text-white/40 border-white/20'}`}>{product.status}</span>
+                        </button>
+                        <span className="text-white/25 text-xs font-body">{product.variants_count}v</span>
+                        {product.first_price && <span className="text-gold/50 text-xs font-heading">${(product.first_price.amount / 100).toFixed(2)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* STORE PRODUCT EDITOR */}
+            {activeTab === 'store' && storeView === 'form' && editingProduct && (
+              <div className="max-w-2xl mx-auto space-y-6 pb-8">
+                <button onClick={() => { setStoreView('list'); setEditingProduct(null); setProductDetail(null) }} className="text-white/40 hover:text-gold text-sm font-heading transition-colors hidden md:inline-flex items-center gap-1"><span>{icons.back}</span> Back to products</button>
+
+                <div className="flex gap-4 items-start">
+                  {editingProduct.thumbnail && (<div className="w-20 h-20 rounded-xl overflow-hidden bg-[#0a0a0a] border border-white/10 shrink-0"><img src={editingProduct.thumbnail} alt="" className="w-full h-full object-cover" /></div>)}
+                  <div><h2 className="text-white text-xl font-display">{editingProduct.title}</h2><p className="text-white/30 text-xs font-heading mt-1">{editingProduct.variants_count} variants · /shop/{editingProduct.handle}</p></div>
+                </div>
+
+                {detailLoading ? (
+                  <div className="text-center py-8"><div className="text-gold/50 animate-pulse font-heading text-sm">Loading financials...</div></div>
+                ) : productDetail?.stats && (
+                  <div className="p-4 rounded-xl bg-[#111] border border-gold/10">
+                    <h3 className="text-gold text-xs uppercase tracking-wider font-heading mb-3">Financial Overview</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Avg Cost', value: `$${(productDetail.stats.avg_cost / 100).toFixed(2)}`, color: 'text-white/70' },
+                        { label: 'Avg Retail', value: `$${(productDetail.stats.avg_retail / 100).toFixed(2)}`, color: 'text-gold' },
+                        { label: 'Avg Profit', value: `$${(productDetail.stats.avg_profit / 100).toFixed(2)}`, color: 'text-emerald-400' },
+                        { label: 'Avg Margin', value: `${productDetail.stats.avg_margin}%`, color: productDetail.stats.avg_margin > 20 ? 'text-emerald-400' : productDetail.stats.avg_margin > 10 ? 'text-amber-400' : 'text-red-400' },
+                      ].map(s => (
+                        <div key={s.label} className="text-center p-2"><p className="text-white/30 text-[10px] uppercase tracking-wider font-heading">{s.label}</p><p className={`text-lg font-display ${s.color}`}>{s.value}</p></div>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-white/5 flex justify-between text-[10px] font-heading text-white/25">
+                      <span>Margin range: {productDetail.stats.lowest_margin}% – {productDetail.stats.highest_margin}%</span>
+                      <span>{productDetail.stats.total_variants} variants</span>
+                    </div>
+                    {productDetail.shipping_estimate && (<div className="mt-2 text-[10px] font-heading text-white/25">Est. shipping (US): ${(productDetail.shipping_estimate.rate / 100).toFixed(2)} ({productDetail.shipping_estimate.min_days}-{productDetail.shipping_estimate.max_days} days)</div>)}
+                  </div>
+                )}
+
+                {productDetail && editingProduct.printful_id && (
+                  <div className="p-4 rounded-xl bg-[#111] border border-white/5">
+                    <h3 className="text-white text-sm font-heading mb-3">Bulk Pricing Tool</h3>
+                    <p className="text-white/30 text-xs font-body mb-4">Set all variant prices based on Printful cost. Applies to all {editingProduct.variants_count} variants.</p>
+                    <div className="flex gap-2 mb-3">
+                      <button onClick={() => setMarkupType('percentage')} className={`flex-1 py-2 rounded-lg border text-xs font-heading transition-colors ${markupType === 'percentage' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/30'}`}>% Markup</button>
+                      <button onClick={() => setMarkupType('fixed')} className={`flex-1 py-2 rounded-lg border text-xs font-heading transition-colors ${markupType === 'fixed' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/30'}`}>$ Fixed Add</button>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">{markupType === 'percentage' ? '%' : '$'}</span>
+                        <input type="number" value={markupValue} onChange={e => setMarkupValue(e.target.value)} placeholder={markupType === 'percentage' ? 'e.g. 35' : 'e.g. 12.00'} className={`${inputCls} pl-8 py-2.5 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
+                      </div>
+                      <button onClick={handleBulkPrice} disabled={pricingLoading || !markupValue} className="px-5 py-2.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold text-xs hover:bg-gold/90 transition-colors disabled:opacity-50">{pricingLoading ? 'Updating...' : 'Apply'}</button>
+                    </div>
+                    {markupValue && productDetail?.stats?.avg_cost > 0 && (
+                      <p className="text-white/20 text-[10px] font-body mt-2">Preview: ${(productDetail.stats.avg_cost / 100).toFixed(2)} cost → <span className="text-gold/60">${markupType === 'percentage' ? ((productDetail.stats.avg_cost / 100) * (1 + parseFloat(markupValue || '0') / 100)).toFixed(2) : ((productDetail.stats.avg_cost / 100) + parseFloat(markupValue || '0')).toFixed(2)}</span> retail (avg)</p>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Product Title</label><input type="text" value={productForm.title} onChange={e => setProductForm(f => ({ ...f, title: e.target.value }))} className={inputCls} /></div>
+                  <div><label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Description</label><textarea value={productForm.description} onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))} rows={4} placeholder="Describe this product..." className={`${inputCls} resize-none`} /></div>
+                  <div>
+                    <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Status</label>
+                    <div className="flex gap-2">
+                      {['published', 'draft'].map(s => (<button key={s} type="button" onClick={() => setProductForm(f => ({ ...f, status: s }))} className={`flex-1 py-2.5 rounded-lg border text-sm font-heading capitalize transition-colors ${productForm.status === s ? s === 'published' ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/20 bg-white/5 text-white/50' : 'border-white/10 text-white/30'}`}>{s}</button>))}
+                    </div>
+                  </div>
+                  <button onClick={handleSaveProduct} disabled={productSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">{productSaving ? 'Saving...' : 'Save Changes'}</button>
+                </div>
+
+                {productDetail?.variants?.length > 0 && (
+                  <div className="p-4 rounded-xl bg-[#111] border border-white/5">
+                    <h3 className="text-white text-sm font-heading mb-3">Variant Breakdown ({productDetail.variants.length})</h3>
+                    <div className="overflow-x-auto -mx-4 px-4">
+                      <table className="w-full text-xs">
+                        <thead><tr className="text-white/30 font-heading uppercase tracking-wider border-b border-white/5"><th className="text-left py-2 pr-3">Variant</th><th className="text-right py-2 px-2">Cost</th><th className="text-right py-2 px-2">Retail</th><th className="text-right py-2 px-2">Profit</th><th className="text-right py-2 pl-2">Margin</th></tr></thead>
+                        <tbody>
+                          {productDetail.variants.map((v: any, i: number) => (
+                            <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
+                              <td className="py-2 pr-3"><span className="text-white/60 font-body">{v.color}{v.color && v.size ? ' / ' : ''}{v.size}</span></td>
+                              <td className="text-right py-2 px-2 text-white/40 font-body">{v.cost_price > 0 ? `$${(v.cost_price / 100).toFixed(2)}` : '—'}</td>
+                              <td className="text-right py-2 px-2 text-gold/70 font-heading">${(v.retail_price / 100).toFixed(2)}</td>
+                              <td className="text-right py-2 px-2 text-emerald-400/70 font-body">{v.profit > 0 ? `$${(v.profit / 100).toFixed(2)}` : '—'}</td>
+                              <td className={`text-right py-2 pl-2 font-heading ${v.margin > 20 ? 'text-emerald-400/70' : v.margin > 10 ? 'text-amber-400/70' : 'text-red-400/70'}`}>{v.margin > 0 ? `${v.margin}%` : '—'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {productDetail?.catalog_info && (
+                  <details className="border border-white/5 rounded-lg">
+                    <summary className="px-4 py-3 text-white/40 text-xs uppercase tracking-wider font-heading cursor-pointer hover:text-white/60">Printful Product Info</summary>
+                    <div className="p-4 space-y-2 border-t border-white/5 text-xs font-body">
+                      {productDetail.catalog_info.brand && <div className="flex justify-between"><span className="text-white/30">Brand</span><span className="text-white/60">{productDetail.catalog_info.brand}</span></div>}
+                      {productDetail.catalog_info.model && <div className="flex justify-between"><span className="text-white/30">Model</span><span className="text-white/60">{productDetail.catalog_info.model}</span></div>}
+                      {productDetail.catalog_info.type_name && <div className="flex justify-between"><span className="text-white/30">Type</span><span className="text-white/60">{productDetail.catalog_info.type_name}</span></div>}
+                      {productDetail.catalog_info.description && <p className="text-white/40 mt-2 leading-relaxed">{productDetail.catalog_info.description}</p>}
+                    </div>
+                  </details>
+                )}
+
+                <Link href={`/shop/${editingProduct.handle}`} target="_blank" className="flex items-center gap-2 text-gold/50 text-xs font-heading hover:text-gold transition-colors">{icons.external} View on live shop</Link>
+              </div>
+            )}
             {activeTab === 'customers' && <ComingSoon title="Customer Management" description="Track buyers, manage inquiries, view purchase history, and build your client relationships." icon="customers" />}
             {activeTab === 'payments' && <ComingSoon title="Payments" description="Accept deposits, process payments with Stripe, track revenue, and manage payment history." icon="payments" />}
             {activeTab === 'messages' && <ComingSoon title="Messages" description="Communicate with customers, send updates about litters, and manage inquiries all in one place." icon="messages" />}
@@ -912,7 +1411,7 @@ export default function ManagePage() {
       {/* MOBILE BOTTOM NAV */}
       <div className="ct-mobile-nav">
         {mobileNavItems.map(item => (
-          <button key={item.id} onClick={() => item.id === 'more' ? setSidebarOpen(true) : switchTab(item.id as Tab)}
+          <button key={item.id} onClick={() => item.id === 'more' ? (setSidebarOpen(true), pushAdminState(activeTab, 'sidebar')) : switchTab(item.id as Tab)}
             className={`ct-mobile-btn font-heading ${item.id !== 'more' && activeTab === item.id ? 'active' : ''}`}>
             {icons[item.icon]}<span>{item.label}</span>
           </button>
