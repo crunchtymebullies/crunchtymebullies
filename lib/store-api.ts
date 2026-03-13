@@ -132,6 +132,42 @@ export async function removeCartItem(cartId: string, lineItemId: string) {
   })
 }
 
+// ── Checkout ──
+
+export async function updateCartAddress(cartId: string, address: {
+  first_name: string; last_name: string; address_1: string; address_2?: string;
+  city: string; province: string; postal_code: string; country_code: string; phone?: string;
+}, email: string) {
+  return storeFetch<{ cart: any }>(`/carts/${cartId}`, {
+    method: 'POST',
+    body: { shipping_address: address, email },
+  })
+}
+
+export async function getShippingOptions(cartId: string) {
+  return storeFetch<{ shipping_options: any[] }>(`/shipping-options?cart_id=${cartId}`)
+}
+
+export async function addShippingMethod(cartId: string, optionId: string) {
+  return storeFetch<{ cart: any }>(`/carts/${cartId}/shipping-methods`, {
+    method: 'POST',
+    body: { option_id: optionId },
+  })
+}
+
+export async function initPaymentSessions(cartId: string) {
+  return storeFetch<{ payment_collection: any }>(`/payment-collections`, {
+    method: 'POST',
+    body: { cart_id: cartId },
+  })
+}
+
+export async function completeCart(cartId: string) {
+  return storeFetch<{ type: string; order: any }>(`/carts/${cartId}/complete`, {
+    method: 'POST',
+  })
+}
+
 // ── Helpers ──
 
 export function formatPrice(amount: number, currency: string = 'usd'): string {

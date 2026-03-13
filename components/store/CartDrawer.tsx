@@ -168,12 +168,13 @@ export default function CartDrawer() {
             <p className="text-white/15 text-[10px] font-heading tracking-wider">
               Shipping & taxes calculated at checkout
             </p>
-            <button
-              disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-gold-dark via-gold to-gold-dark text-[#050507] text-sm font-heading font-bold tracking-[0.2em] uppercase transition-all hover:shadow-[0_0_30px_rgba(208,185,112,0.3)] disabled:opacity-30"
+            <Link
+              href="/shop/checkout"
+              onClick={handleClose}
+              className="block w-full py-4 bg-gradient-to-r from-gold-dark via-gold to-gold-dark text-[#050507] text-sm font-heading font-bold tracking-[0.2em] uppercase text-center transition-all hover:shadow-[0_0_30px_rgba(208,185,112,0.3)]"
             >
               {loading ? 'Updating...' : 'Checkout'}
-            </button>
+            </Link>
             <button
               onClick={handleClose}
               className="w-full text-center text-white/25 text-xs font-heading tracking-wider hover:text-white/40 transition-colors py-1"
