@@ -46,16 +46,16 @@ function parseCart(cart: any): Omit<CartState, 'loading'> {
   const items: CartItem[] = (cart?.items || []).map((item: any) => ({
     id: item.id,
     variant_id: item.variant_id,
-    title: item.title || item.product?.title || 'Product',
-    thumbnail: item.thumbnail || item.product?.thumbnail || null,
+    title: item.title || item.product_title || 'Product',
+    thumbnail: item.thumbnail || null,
     quantity: item.quantity,
     unit_price: item.unit_price,
     total: item.total || item.unit_price * item.quantity,
-    variant: { title: item.variant?.title || '' },
+    variant: { title: item.variant_title || item.variant?.title || '' },
     product: {
-      title: item.product?.title || '',
-      handle: item.product?.handle || '',
-      thumbnail: item.product?.thumbnail || null,
+      title: item.product_title || item.product?.title || item.title || '',
+      handle: item.product_handle || item.product?.handle || '',
+      thumbnail: item.thumbnail || item.product?.thumbnail || null,
     },
   }))
 
