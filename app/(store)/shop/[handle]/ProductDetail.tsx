@@ -40,10 +40,14 @@ export default function ProductDetail({ product }: { product: StoreProduct }) {
   const handleAdd = useCallback(async () => {
     if (!matchedVariant) return
     setAdding(true)
-    await addToCart(matchedVariant.id, quantity)
+    try {
+      await addToCart(matchedVariant.id, quantity)
+      setAdded(true)
+      setTimeout(() => setAdded(false), 2000)
+    } catch (err) {
+      console.error('Failed to add to cart:', err)
+    }
     setAdding(false)
-    setAdded(true)
-    setTimeout(() => setAdded(false), 2000)
   }, [matchedVariant, quantity, addToCart])
 
   return (

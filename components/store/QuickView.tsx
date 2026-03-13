@@ -47,9 +47,13 @@ export default function QuickView({ product, onClose }: QuickViewProps) {
   const handleAdd = useCallback(async () => {
     if (!matchedVariant) return
     setAdding(true)
-    await addToCart(matchedVariant.id, quantity)
+    try {
+      await addToCart(matchedVariant.id, quantity)
+      onClose()
+    } catch (err) {
+      console.error('Failed to add to cart:', err)
+    }
     setAdding(false)
-    onClose()
   }, [matchedVariant, quantity, addToCart, onClose])
 
   // Close on escape

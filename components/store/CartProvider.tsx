@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { createStoreCart, getStoreCart, addItemToCart, updateCartItem, removeCartItem } from '@/lib/store-api'
 
 interface CartItem {
@@ -48,9 +48,9 @@ function parseCart(cart: any): Omit<CartState, 'loading'> {
     variant_id: item.variant_id,
     title: item.title || item.product_title || 'Product',
     thumbnail: item.thumbnail || null,
-    quantity: item.quantity,
-    unit_price: item.unit_price,
-    total: item.total || item.unit_price * item.quantity,
+    quantity: item.quantity || 1,
+    unit_price: item.unit_price || 0,
+    total: item.total || (item.unit_price || 0) * (item.quantity || 1),
     variant: { title: item.variant_title || item.variant?.title || '' },
     product: {
       title: item.product_title || item.product?.title || item.title || '',
@@ -62,8 +62,8 @@ function parseCart(cart: any): Omit<CartState, 'loading'> {
   return {
     id: cart?.id || null,
     items,
-    subtotal: cart?.subtotal || 0,
-    total: cart?.total || 0,
+    subtotal: cart?.subtotal || cart?.item_subtotal || 0,
+    total: cart?.total || cart?.subtotal || 0,
     itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
   }
 }
@@ -75,16 +75,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     id: null, items: [], subtotal: 0, total: 0, itemCount: 0, loading: true,
   })
   const [isOpen, setIsOpen] = useState(false)
+  const cartIdRef = useRef<string | null>(null)
 
-  // Initialize cart
+  useEffect(() => { cartIdRef.current = state.id }, [state.id])
+
+  // Initialize
   useEffect(() => {
     const init = async () => {
       const storedId = localStorage.getItem(CART_KEY)
       if (storedId) {
         try {
           const { cart } = await getStoreCart(storedId)
-          setState({ ...parseCart(cart), loading: false })
-          return
+          if (cart?.id) {
+            cartIdRef.current = cart.id
+            setState({ ...parseCart(cart), loading: false })
+            return
+          }
         } catch {
           localStorage.removeItem(CART_KEY)
         }
@@ -95,12 +101,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const ensureCart = useCallback(async (): Promise<string> => {
-    if (state.id) return state.id
+    if (cartIdRef.current) return cartIdRef.current
+    const stored = localStorage.getItem(CART_KEY)
+    if (stored) { cartIdRef.current = stored; return stored }
     const { cart } = await createStoreCart()
+    cartIdRef.current = cart.id
     localStorage.setItem(CART_KEY, cart.id)
     setState(s => ({ ...s, id: cart.id }))
     return cart.id
-  }, [state.id])
+  }, [])
 
   const addToCart = useCallback(async (variantId: string, quantity = 1) => {
     setState(s => ({ ...s, loading: true }))
@@ -112,32 +121,35 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error('Add to cart failed:', err)
       setState(s => ({ ...s, loading: false }))
+      throw err
     }
   }, [ensureCart])
 
   const updateItem = useCallback(async (lineItemId: string, quantity: number) => {
-    if (!state.id) return
+    const cartId = cartIdRef.current
+    if (!cartId) return
     setState(s => ({ ...s, loading: true }))
     try {
-      const { cart } = await updateCartItem(state.id, lineItemId, quantity)
+      const { cart } = await updateCartItem(cartId, lineItemId, quantity)
       setState({ ...parseCart(cart), loading: false })
     } catch (err) {
       console.error('Update cart failed:', err)
       setState(s => ({ ...s, loading: false }))
     }
-  }, [state.id])
+  }, [])
 
   const removeItem = useCallback(async (lineItemId: string) => {
-    if (!state.id) return
+    const cartId = cartIdRef.current
+    if (!cartId) return
     setState(s => ({ ...s, loading: true }))
     try {
-      const { cart } = await removeCartItem(state.id, lineItemId)
+      const { cart } = await removeCartItem(cartId, lineItemId)
       setState({ ...parseCart(cart), loading: false })
     } catch (err) {
       console.error('Remove from cart failed:', err)
       setState(s => ({ ...s, loading: false }))
     }
-  }, [state.id])
+  }, [])
 
   return (
     <CartContext.Provider value={{
