@@ -274,11 +274,11 @@ export async function POST(req: NextRequest) {
           const cost = costMap[String(sv.variant_id)] || 0
           if (cost <= 0) continue
 
-          let newCents: number
+          let newPrice: number
           if (markup_type === 'percentage') {
-            newCents = Math.round(cost * 100 * (1 + markup_value / 100))
+            newPrice = Math.round(cost * (1 + markup_value / 100) * 100) / 100
           } else {
-            newCents = Math.round(cost * 100) + markup_value
+            newPrice = Math.round((cost + markup_value) * 100) / 100
           }
 
           const mv = medusaProd.variants?.find((v: any) => v.metadata?.printful_variant_id === String(sv.id))
@@ -287,7 +287,7 @@ export async function POST(req: NextRequest) {
           try {
             await medusaAdmin(`/products/${id}/variants/${mv.id}`, token, {
               method: 'POST',
-              body: { prices: [{ amount: newCents, currency_code: 'usd', region_id: REGION_ID }] },
+              body: { prices: [{ amount: newPrice, currency_code: 'usd', region_id: REGION_ID }] },
             })
             updated++
           } catch { errors++ }
@@ -349,7 +349,7 @@ export async function POST(req: NextRequest) {
                 body: {
                   title: `/ ${sv.color || ''} / ${sv.size || ''}`.trim(),
                   options: opts,
-                  prices: retail > 0 ? [{ amount: Math.round(retail * 100), currency_code: 'usd', region_id: REGION_ID }] : [],
+                  prices: retail > 0 ? [{ amount: retail, currency_code: 'usd', region_id: REGION_ID }] : [],
                   metadata: { printful_variant_id: String(sv.id) },
                   manage_inventory: false,
                 },

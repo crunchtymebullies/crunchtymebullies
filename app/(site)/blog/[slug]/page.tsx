@@ -7,7 +7,7 @@ import { ArrowLeft, Calendar } from 'lucide-react'
 import type { BlogPost } from '@/lib/types'
 import type { Metadata } from 'next'
 
-export const revalidate = 60
+export const revalidate = 3600
 
 export async function generateStaticParams() {
   const posts = await client.fetch<BlogPost[]>(BLOG_POSTS_QUERY).catch(() => [])

@@ -2,9 +2,13 @@
 // CRUNCHTIME BULLIES — Store API (Medusa v2 Store Endpoints)
 // ═══════════════════════════════════════════════════════════
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'https://crunchtime-bullies-backend.fly.dev'
+const DIRECT_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || 'https://crunchtime-bullies-backend.fly.dev'
 const API_KEY = process.env.NEXT_PUBLIC_MEDUSA_API_KEY || process.env.MEDUSA_API_KEY || ''
 const REGION_ID = process.env.NEXT_PUBLIC_MEDUSA_REGION_ID || ''
+
+// Server-side (SSR/build) calls go direct; client-side calls use same-origin proxy to avoid CORS
+const isServer = typeof window === 'undefined'
+const BACKEND_URL = isServer ? DIRECT_BACKEND_URL : ''
 
 interface StoreRequestOptions {
   method?: string
@@ -15,7 +19,11 @@ interface StoreRequestOptions {
 
 async function storeFetch<T>(path: string, options: StoreRequestOptions = {}): Promise<T> {
   const { method = 'GET', body, next, headers = {} } = options
-  const res = await fetch(`${BACKEND_URL}/store${path}`, {
+  // Client: /api/store/... (same-origin proxy) | Server: direct to Medusa backend
+  const url = isServer
+    ? `${DIRECT_BACKEND_URL}/store${path}`
+    : `/api/store${path}`
+  const res = await fetch(url, {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -23,7 +31,7 @@ async function storeFetch<T>(path: string, options: StoreRequestOptions = {}): P
       ...headers,
     },
     body: body ? JSON.stringify(body) : undefined,
-    next,
+    ...(isServer && next ? { next } : {}),
   })
   if (!res.ok) {
     const err = await res.text()
@@ -83,7 +91,7 @@ export async function getStoreProducts(params?: {
   
   return storeFetch<{ products: StoreProduct[]; count: number }>(
     `/products?${sp.toString()}`,
-    { next: { revalidate: 60 } }
+    { next: { revalidate: 3600 } }
   )
 }
 
@@ -94,7 +102,7 @@ export async function getStoreProduct(handle: string) {
   
   const { products } = await storeFetch<{ products: StoreProduct[] }>(
     `/products?${sp.toString()}`,
-    { next: { revalidate: 60 } }
+    { next: { revalidate: 3600 } }
   )
   return products[0] || null
 }
@@ -155,10 +163,17 @@ export async function addShippingMethod(cartId: string, optionId: string) {
   })
 }
 
-export async function initPaymentSessions(cartId: string) {
+export async function initPaymentCollection(cartId: string) {
   return storeFetch<{ payment_collection: any }>(`/payment-collections`, {
     method: 'POST',
     body: { cart_id: cartId },
+  })
+}
+
+export async function initPaymentSession(paymentCollectionId: string, providerId: string) {
+  return storeFetch<{ payment_collection: any }>(`/payment-collections/${paymentCollectionId}/payment-sessions`, {
+    method: 'POST',
+    body: { provider_id: providerId },
   })
 }
 
@@ -174,7 +189,7 @@ export function formatPrice(amount: number, currency: string = 'usd'): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency.toUpperCase(),
-  }).format(amount / 100)
+  }).format(amount)
 }
 
 export function getLowestPrice(product: StoreProduct): { amount: number; currency: string } | null {

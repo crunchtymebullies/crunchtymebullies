@@ -11,22 +11,20 @@ export default function StoreHeader() {
   const headerRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40)
+    let ticking = false
+    const onScroll = () => {
+      if (ticking) return
+      ticking = true
+      requestAnimationFrame(() => {
+        setScrolled(window.scrollY > 40)
+        ticking = false
+      })
+    }
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  useEffect(() => {
-    // GSAP header entrance
-    import('gsap').then(({ gsap }) => {
-      const el = headerRef.current
-      if (!el) return
-      gsap.fromTo(el.querySelectorAll('.store-header-item'),
-        { y: -20, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'power3.out', delay: 0.2 }
-      )
-    })
-  }, [])
+  // CSS handles header entrance animation via animate-fade-in-up
 
   return (
     <header

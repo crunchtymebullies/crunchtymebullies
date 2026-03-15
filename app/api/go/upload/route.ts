@@ -30,8 +30,12 @@ export async function POST(req: NextRequest) {
       ? `${label.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.${file.name.split('.').pop()}`
       : file.name
 
+    // Route videos to /assets/files/, images to /assets/images/
+    const isVideo = file.type.startsWith('video/')
+    const assetType = isVideo ? 'files' : 'images'
+
     const uploadRes = await fetch(
-      `https://${projectId}.api.sanity.io/v2024-01-01/assets/images/${dataset}?filename=${encodeURIComponent(filename)}`,
+      `https://${projectId}.api.sanity.io/v2024-01-01/assets/${assetType}/${dataset}?filename=${encodeURIComponent(filename)}`,
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': file.type },
@@ -46,7 +50,7 @@ export async function POST(req: NextRequest) {
     }
 
     const asset = result.document
-    return NextResponse.json({ _id: asset._id, url: asset.url, filename: asset.originalFilename })
+    return NextResponse.json({ _id: asset._id, url: asset.url, filename: asset.originalFilename, assetType })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     return NextResponse.json({ error: message }, { status: 500 })

@@ -72,21 +72,21 @@ export const HOME_PAGE_QUERY = `*[_type == "homePage"][0]{
 export const FEATURED_DOGS_QUERY = `*[_type == "dog" && featured == true] | order(_createdAt desc) [0...6]{
   _id, name, breed, variety, gender, status, "slug": slug.current, price, weight,
   mainImage{ asset->{url}, alt },
-  gallery[]{ asset->{url} },
+  gallery[]{ _type, asset->{url}, caption, video{ asset->{url} } },
   personality
 }`
 
 export const ALL_DOGS_QUERY = `*[_type == "dog"] | order(_createdAt desc){
   _id, name, breed, variety, gender, status, "slug": slug.current, price, weight, color, dob,
   mainImage{ asset->{url}, alt },
-  gallery[]{ asset->{url} },
+  gallery[]{ _type, asset->{url}, caption, video{ asset->{url} } },
   personality, featured
 }`
 
 export const DOG_BY_SLUG_QUERY = `*[_type == "dog" && slug.current == $slug][0]{
   _id, name, breed, variety, gender, status, "slug": slug.current, price, weight, height, color, dob,
   mainImage{ asset->{url}, alt },
-  gallery[]{ asset->{url}, caption },
+  gallery[]{ _type, asset->{url}, caption, video{ asset->{url} } },
   description, personality, sire, dam, bloodline, registry, registrationNumber, pedigreeUrl,
   healthTests, healthNotes, featured,
   documents[]{ title, docType, asset->{url, originalFilename, size} }

@@ -8,7 +8,7 @@ import { useCart } from '@/components/store/CartProvider'
 import { formatPrice, type StoreProduct } from '@/lib/store-api'
 
 export default function ProductDetail({ product }: { product: StoreProduct }) {
-  const { addToCart, loading: cartLoading } = useCart()
+  const { addToCart, loading: cartLoading, error: cartError } = useCart()
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() => {
     const defaults: Record<string, string> = {}
     for (const opt of product.options || []) {
@@ -21,11 +21,30 @@ export default function ProductDetail({ product }: { product: StoreProduct }) {
   const [added, setAdded] = useState(false)
   const [activeImage, setActiveImage] = useState(0)
 
-  // Build image list
-  const images = [
+  // Parse color images from metadata
+  const colorImages: Record<string, string> = (() => {
+    try {
+      const raw = product.metadata?.color_images
+      return raw ? JSON.parse(raw) : {}
+    } catch { return {} }
+  })()
+
+  // Find current selected color
+  const colorOption = product.options?.find(o => o.title.toLowerCase() === 'color')
+  const selectedColor = colorOption ? selectedOptions[colorOption.id] : null
+  // Color values in options have "/ " prefix (e.g. "/ Black"), strip it for lookup
+  const cleanColor = selectedColor?.replace(/^\/\s*/, '') || ''
+  const colorImage = cleanColor ? colorImages[cleanColor] : null
+
+  // Build image list — put color-specific image first when available
+  const baseImages = [
     ...(product.thumbnail ? [product.thumbnail] : []),
     ...(product.images?.map(i => i.url) || []),
   ].filter((v, i, a) => a.indexOf(v) === i) // dedupe
+
+  const images = colorImage
+    ? [colorImage, ...baseImages.filter(img => img !== colorImage)]
+    : baseImages
 
   // Find matching variant — Medusa v2 returns options as array of {value, option_id} objects
   const matchedVariant = product.variants?.find(v => {
@@ -123,7 +142,7 @@ export default function ProductDetail({ product }: { product: StoreProduct }) {
                   {opt.values?.map(val => {
                     const isSelected = selectedOptions[opt.id] === val.value
                     return (
-                      <button key={val.id} onClick={() => setSelectedOptions(prev => ({ ...prev, [opt.id]: val.value }))}
+                      <button key={val.id} onClick={() => { setSelectedOptions(prev => ({ ...prev, [opt.id]: val.value })); if (opt.title.toLowerCase() === 'color') setActiveImage(0); }}
                         className={`px-4 py-2.5 rounded-xl text-sm font-heading border transition-all ${
                           isSelected
                             ? 'border-gold bg-gold/10 text-gold shadow-[0_0_20px_rgba(208,185,112,0.1)]'
@@ -162,6 +181,13 @@ export default function ProductDetail({ product }: { product: StoreProduct }) {
               }`}>
               {added ? <><Check size={18} /> Added to Cart</> : adding ? 'Adding...' : <><ShoppingBag size={18} /> Add to Cart</>}
             </button>
+
+            {/* Error display */}
+            {cartError && (
+              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-heading">
+                {cartError}
+              </div>
+            )}
 
             {/* Trust signals */}
             <div className="grid grid-cols-3 gap-3 pt-2">

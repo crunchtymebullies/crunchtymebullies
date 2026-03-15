@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'Breeding services, stud service, puppy packages, and more from Crunchtyme Bullies.',
 }
 
-export const revalidate = 60
+export const revalidate = 3600
 
 export default async function ServicesPage() {
   const sanityServices = await client.fetch(SERVICES_QUERY).catch(() => [])

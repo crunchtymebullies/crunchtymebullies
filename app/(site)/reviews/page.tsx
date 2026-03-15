@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'See what our clients say about their Crunchtyme Bullies experience.',
 }
 
-export const revalidate = 60
+export const revalidate = 3600
 
 export default async function ReviewsPage() {
   const reviews = await client.fetch<Review[]>(REVIEWS_QUERY).catch(() => [])

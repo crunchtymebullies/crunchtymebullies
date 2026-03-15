@@ -29,6 +29,7 @@ interface CartContextType extends CartState {
   updateItem: (lineItemId: string, quantity: number) => Promise<void>
   removeItem: (lineItemId: string) => Promise<void>
   isOpen: boolean
+  error: string | null
   openCart: () => void
   closeCart: () => void
   toggleCart: () => void
@@ -70,11 +71,24 @@ function parseCart(cart: any): Omit<CartState, 'loading'> {
 
 const CART_KEY = 'ct-cart-id'
 
+function safeGetItem(key: string): string | null {
+  try { return localStorage.getItem(key) } catch { return null }
+}
+
+function safeSetItem(key: string, value: string) {
+  try { localStorage.setItem(key, value) } catch { /* storage blocked */ }
+}
+
+function safeRemoveItem(key: string) {
+  try { localStorage.removeItem(key) } catch { /* storage blocked */ }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<CartState>({
     id: null, items: [], subtotal: 0, total: 0, itemCount: 0, loading: true,
   })
   const [isOpen, setIsOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const cartIdRef = useRef<string | null>(null)
 
   useEffect(() => { cartIdRef.current = state.id }, [state.id])
@@ -82,7 +96,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Initialize
   useEffect(() => {
     const init = async () => {
-      const storedId = localStorage.getItem(CART_KEY)
+      const storedId = safeGetItem(CART_KEY)
       if (storedId) {
         try {
           const { cart } = await getStoreCart(storedId)
@@ -92,7 +106,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return
           }
         } catch {
-          localStorage.removeItem(CART_KEY)
+          safeRemoveItem(CART_KEY)
         }
       }
       setState(s => ({ ...s, loading: false }))
@@ -102,24 +116,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const ensureCart = useCallback(async (): Promise<string> => {
     if (cartIdRef.current) return cartIdRef.current
-    const stored = localStorage.getItem(CART_KEY)
+    const stored = safeGetItem(CART_KEY)
     if (stored) { cartIdRef.current = stored; return stored }
     const { cart } = await createStoreCart()
     cartIdRef.current = cart.id
-    localStorage.setItem(CART_KEY, cart.id)
+    safeSetItem(CART_KEY, cart.id)
     setState(s => ({ ...s, id: cart.id }))
     return cart.id
   }, [])
 
   const addToCart = useCallback(async (variantId: string, quantity = 1) => {
     setState(s => ({ ...s, loading: true }))
+    setError(null)
     try {
       const cartId = await ensureCart()
       const { cart } = await addItemToCart(cartId, variantId, quantity)
       setState({ ...parseCart(cart), loading: false })
       setIsOpen(true)
-    } catch (err) {
-      console.error('Add to cart failed:', err)
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to add to cart'
+      console.error('Add to cart failed:', msg, err)
+      setError(msg)
       setState(s => ({ ...s, loading: false }))
       throw err
     }
@@ -155,7 +172,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider value={{
       ...state,
       addToCart, updateItem, removeItem,
-      isOpen, openCart: () => setIsOpen(true), closeCart: () => setIsOpen(false),
+      isOpen, error,
+      openCart: () => setIsOpen(true), closeCart: () => setIsOpen(false),
       toggleCart: () => setIsOpen(o => !o),
     }}>
       {children}

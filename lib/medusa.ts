@@ -49,14 +49,14 @@ export async function getProducts(params?: {
   const query = searchParams.toString()
   return medusaFetch<{ products: any[]; count: number }>(
     `/products${query ? `?${query}` : ''}`,
-    { next: { revalidate: 60 } }
+    { next: { revalidate: 3600 } }
   )
 }
 
 export async function getProduct(handle: string) {
   const { products } = await medusaFetch<{ products: any[] }>(
     `/products?handle=${handle}`,
-    { next: { revalidate: 60 } }
+    { next: { revalidate: 3600 } }
   )
   return products[0] || null
 }
@@ -64,14 +64,14 @@ export async function getProduct(handle: string) {
 export async function getProductCategories() {
   return medusaFetch<{ product_categories: any[] }>(
     '/product-categories',
-    { next: { revalidate: 300 } }
+    { next: { revalidate: 3600 } }
   )
 }
 
 export async function getCollections() {
   return medusaFetch<{ collections: any[] }>(
     '/collections',
-    { next: { revalidate: 300 } }
+    { next: { revalidate: 3600 } }
   )
 }
 

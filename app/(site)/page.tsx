@@ -17,7 +17,7 @@ import type { Dog, Review, BlogPost } from '@/lib/types'
 import { ArrowRight, Shield, Heart, Award, Star, CheckCircle, Dna, Home, DollarSign, Clock, ChevronRight } from 'lucide-react'
 import HeroSlideshow from '@/components/HeroSlideshow'
 
-export const revalidate = 60
+export const revalidate = 3600
 
 const iconMap: Record<string, any> = { Shield, Heart, Award, Star, Check: CheckCircle }
 

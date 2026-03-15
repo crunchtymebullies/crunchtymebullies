@@ -1,14 +1,15 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Camera, Dog, CreditCard, Store, Palette, Share2, FileText, Wrench, ChevronRight, CheckCircle2, Circle, Clock, Sparkles, Zap, BarChart3, MessageSquare, X as XIcon } from 'lucide-react'
+import { Camera, Dog, CreditCard, Store, Palette, Share2, FileText, Wrench, PenTool, ChevronRight, CheckCircle2, Circle, Clock, Sparkles, Zap, BarChart3, MessageSquare, X as XIcon } from 'lucide-react'
 
 const defaultItems = [
   { id: 'photos', title: 'Upload Dog Photos', description: 'Take clean, well-lit photos of each dog and upload them here.', href: '/go/photos', icon: Camera, priority: 'high', accentColor: 'emerald' },
   { id: 'dogs', title: 'Dog Information', description: 'Fill in breed details, pedigree info, health tests, and personality for each dog.', href: '/go/dogs', icon: Dog, priority: 'high', accentColor: 'amber' },
   { id: 'stripe', title: 'Set Up Stripe Payments', description: 'Step-by-step walkthrough to create your Stripe business account.', href: '/go/stripe', icon: CreditCard, priority: 'high', accentColor: 'blue' },
-  { id: 'store', title: 'Store & Products', description: 'Products you want to sell — apparel, supplements, accessories, vendor info.', href: '/go/store', icon: Store, priority: 'medium', accentColor: 'purple' },
+  { id: 'store', title: 'Store & Products', description: 'Products you want to sell â€” apparel, supplements, accessories, vendor info.', href: '/go/store', icon: Store, priority: 'medium', accentColor: 'purple' },
+  { id: 'design-studio', title: 'Design Studio', description: 'Map AI-generated designs onto Printful products. Export print-ready files.', href: '/go/design-studio', icon: PenTool, priority: 'medium', accentColor: 'teal' },
   { id: 'branding', title: 'Brand Assets', description: 'Upload logo files, confirm colors, share marketing materials.', href: '/go/branding', icon: Palette, priority: 'medium', accentColor: 'pink' },
   { id: 'social', title: 'Social Media Links', description: 'Connect your Instagram, Facebook, TikTok to the website.', href: '/go/social', icon: Share2, priority: 'medium', accentColor: 'cyan' },
   { id: 'content', title: 'Written Content', description: 'Your story, FAQ answers, testimonials, and policies.', href: '/go/content', icon: FileText, priority: 'low', accentColor: 'orange' },
@@ -110,7 +111,7 @@ export default function GoDashboard() {
         </div>
         <h1 className="text-4xl md:text-5xl font-display text-white mb-4">Welcome to your<br /><span className="text-gold">Command Center</span></h1>
         <p className="text-white/45 font-body text-lg max-w-2xl leading-relaxed">
-          Complete each item below to get your site fully loaded with content, photos, and payment systems. Take your time — we will review everything.
+          Complete each item below to get your site fully loaded with content, photos, and payment systems. Take your time â€” we will review everything.
         </p>
       </div>
 
@@ -182,3 +183,4 @@ export default function GoDashboard() {
     </div>
   )
 }
+

@@ -33,11 +33,17 @@ export default defineType({
 
     defineField({ name: 'mainImage', title: 'Main Photo', type: 'image', group: 'photos', options: { hotspot: true }, validation: (r) => r.required() }),
     defineField({
-      name: 'gallery', title: 'Photo Gallery', type: 'array', group: 'photos',
-      of: [{ type: 'image', options: { hotspot: true }, fields: [
-        { name: 'caption', type: 'string', title: 'Caption' },
-      ]}],
-      description: 'Add as many photos as you like. They display in the gallery on the dog profile page.',
+      name: 'gallery', title: 'Photo & Video Gallery', type: 'array', group: 'photos',
+      of: [
+        { type: 'image', options: { hotspot: true }, fields: [
+          { name: 'caption', type: 'string', title: 'Caption' },
+        ]},
+        { type: 'object', name: 'galleryVideo', title: 'Video', fields: [
+          defineField({ name: 'video', title: 'Video File', type: 'file', options: { accept: 'video/*' }, validation: (r) => r.required() }),
+          defineField({ name: 'caption', title: 'Caption', type: 'string' }),
+        ], preview: { select: { title: 'caption' }, prepare: ({ title }) => ({ title: title || 'Video' }) } },
+      ],
+      description: 'Add photos and videos. They display in the gallery on the dog profile page.',
     }),
 
     defineField({ name: 'sire', title: 'Sire (Father)', type: 'string', group: 'breeding' }),

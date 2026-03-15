@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'Meet our exceptional American Bullies. Premium bloodlines, health-tested, ABKC registered.',
 }
 
-export const revalidate = 60
+export const revalidate = 3600
 
 function DogGrid({ dogs, label }: { dogs: Dog[]; label?: string }) {
   if (!dogs.length) return null

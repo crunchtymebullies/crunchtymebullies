@@ -30,7 +30,7 @@ export default function ProductDetailModal({
   )
   const price = selectedVariant?.prices?.[0]
   const formattedPrice = price
-    ? `$${(price.amount / 100).toFixed(2)}`
+    ? `$${(price.amount).toFixed(2)}`
     : 'Price TBD'
 
   const handleAddToCart = async () => {
@@ -127,7 +127,7 @@ export default function ProductDetailModal({
                         </p>
                         {variant.prices?.[0] && (
                           <p className="text-gold text-xs mt-1">
-                            ${(variant.prices[0].amount / 100).toFixed(2)}
+                            ${(variant.prices[0].amount).toFixed(2)}
                           </p>
                         )}
                       </button>

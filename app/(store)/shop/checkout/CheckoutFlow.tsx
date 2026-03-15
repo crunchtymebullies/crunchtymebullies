@@ -1,13 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ChevronLeft, Lock, CreditCard, Truck, Check, ShoppingBag, AlertCircle, Package } from 'lucide-react'
+import { loadStripe } from '@stripe/stripe-js'
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
 import { useCart } from '@/components/store/CartProvider'
-import { formatPrice, updateCartAddress, getShippingOptions, addShippingMethod, completeCart } from '@/lib/store-api'
+import {
+  formatPrice, updateCartAddress, getShippingOptions, addShippingMethod,
+  initPaymentCollection, initPaymentSession, completeCart,
+} from '@/lib/store-api'
 
 type Step = 'info' | 'shipping' | 'payment' | 'complete'
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '')
 
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD',
@@ -36,15 +43,67 @@ function StepIndicator({ step }: { step: Step }) {
   )
 }
 
-function formatCardNumber(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 16)
-  return digits.replace(/(\d{4})(?=\d)/g, '$1 ')
-}
+// ── Stripe Payment Form (mounted inside <Elements>) ──
+function StripePaymentForm({ onSuccess, onError, amount, loading, setLoading }: {
+  onSuccess: () => void
+  onError: (msg: string) => void
+  amount: number
+  loading: boolean
+  setLoading: (v: boolean) => void
+}) {
+  const stripe = useStripe()
+  const elements = useElements()
 
-function formatExpiry(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 4)
-  if (digits.length > 2) return digits.slice(0, 2) + ' / ' + digits.slice(2)
-  return digits
+  const handleSubmit = async () => {
+    if (!stripe || !elements) return
+    setLoading(true)
+    onError('')
+    try {
+      const { error } = await stripe.confirmPayment({
+        elements,
+        redirect: 'if_required',
+        confirmParams: {
+          return_url: `${window.location.origin}/shop/checkout`,
+        },
+      })
+      if (error) {
+        onError(error.message || 'Payment failed')
+      } else {
+        onSuccess()
+      }
+    } catch (err: any) {
+      onError(err.message || 'Payment failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="p-5 rounded-xl bg-[#0e0e12] border border-white/10">
+        <div className="flex items-center gap-2 mb-4">
+          <CreditCard size={16} className="text-gold/60" />
+          <span className="text-white/50 text-xs font-heading tracking-wider uppercase">Payment Details</span>
+        </div>
+        <PaymentElement
+          options={{
+            layout: 'tabs',
+          }}
+        />
+      </div>
+
+      <button onClick={handleSubmit} disabled={loading || !stripe || !elements}
+        className="w-full py-4 mt-4 bg-gold text-[#0a0a0a] font-heading font-semibold text-sm tracking-wider uppercase flex items-center justify-center gap-2 hover:bg-gold/90 transition-colors disabled:opacity-50">
+        <Lock size={16} />
+        {loading ? 'Processing...' : `Pay ${formatPrice(amount)}`}
+      </button>
+
+      <div className="flex items-center justify-center gap-2 pt-2">
+        <Lock size={12} className="text-white/15" />
+        <span className="text-white/15 text-[10px] font-heading tracking-wider">Secured with 256-bit SSL encryption</span>
+      </div>
+    </div>
+  )
 }
 
 export default function CheckoutFlow() {
@@ -69,11 +128,8 @@ export default function CheckoutFlow() {
   const [selectedShipping, setSelectedShipping] = useState('')
   const [shippingCost, setShippingCost] = useState(0)
 
-  // Payment (mock)
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardExpiry, setCardExpiry] = useState('')
-  const [cardCvc, setCardCvc] = useState('')
-  const [cardName, setCardName] = useState('')
+  // Stripe
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
 
   // Order
   const [orderData, setOrderData] = useState<any>(null)
@@ -110,53 +166,34 @@ export default function CheckoutFlow() {
     setLoading(true); setError('')
     try {
       await addShippingMethod(cartId, selectedShipping)
+
+      // Initialize Stripe payment
+      const { payment_collection } = await initPaymentCollection(cartId)
+      const { payment_collection: updatedCollection } = await initPaymentSession(payment_collection.id, 'pp_stripe_stripe')
+
+      const sessions = updatedCollection?.payment_sessions || []
+      const secret = sessions[0]?.data?.client_secret
+      if (!secret) throw new Error('Failed to initialize payment. Please try again.')
+      setClientSecret(secret)
       setStep('payment')
-    } catch (err: any) { setError(err.message || 'Failed to set shipping') }
+    } catch (err: any) { setError(err.message || 'Failed to set up payment') }
     finally { setLoading(false) }
   }
 
-  const handlePaymentSubmit = async () => {
-    const digits = cardNumber.replace(/\s/g, '')
-    if (digits.length < 15 || !cardExpiry || !cardCvc || !cardName) {
-      setError('Please fill in all payment fields'); return
-    }
+  const handlePaymentSuccess = useCallback(async () => {
     if (!cartId) return
     setLoading(true); setError('')
     try {
-      // Mock payment — in production this calls Stripe's confirmPayment
-      // For now we just complete the cart which creates the order
-      // When Stripe is connected, this will:
-      // 1. Create payment intent via Medusa
-      // 2. Confirm with Stripe Elements
-      // 3. Then complete the cart
-
-      // Simulate payment processing delay
-      await new Promise(r => setTimeout(r, 2000))
-
-      // Try to complete — this will fail without a real payment provider
-      // but we'll show the success UI anyway for the mock
-      try {
-        const result = await completeCart(cartId)
-        setOrderData(result)
-      } catch {
-        // Expected to fail without Stripe — mock success
-        setOrderData({
-          order: {
-            id: 'order_mock_' + Date.now(),
-            display_id: Math.floor(Math.random() * 9000) + 1000,
-            email,
-            total: (subtotal || 0) + shippingCost,
-            items,
-          },
-        })
-      }
-
-      // Clear cart from localStorage
-      localStorage.removeItem('ct-cart-id')
+      const result = await completeCart(cartId)
+      setOrderData(result)
+      try { localStorage.removeItem('ct-cart-id') } catch {}
       setStep('complete')
-    } catch (err: any) { setError(err.message || 'Payment failed') }
-    finally { setLoading(false) }
-  }
+    } catch (err: any) {
+      setError(err.message || 'Payment succeeded but order completion failed. Please contact support.')
+    } finally {
+      setLoading(false)
+    }
+  }, [cartId])
 
   // Redirect if cart is empty
   if (step !== 'complete' && items.length === 0) {
@@ -199,13 +236,8 @@ export default function CheckoutFlow() {
           </div>
           <div className="border-t border-white/5 pt-3 flex justify-between">
             <span className="text-white font-heading">Total</span>
-            <span className="text-gold font-display text-lg">{formatPrice((subtotal || 0) + shippingCost)}</span>
+            <span className="text-gold font-display text-lg">{formatPrice(orderData?.order?.total || (subtotal || 0) + shippingCost)}</span>
           </div>
-        </div>
-
-        <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20 text-left mb-8">
-          <p className="text-amber-300 text-xs font-heading mb-1">Demo Mode</p>
-          <p className="text-amber-200/50 text-xs font-body">This was a test order. No payment was charged. When Stripe is connected, real payments will process here.</p>
         </div>
 
         <div className="flex flex-col gap-3">
@@ -320,12 +352,12 @@ export default function CheckoutFlow() {
 
               <button onClick={handleShippingSubmit} disabled={loading || !selectedShipping}
                 className="w-full py-4 mt-4 bg-gold text-[#0a0a0a] font-heading font-semibold text-sm tracking-wider uppercase flex items-center justify-center gap-2 hover:bg-gold/90 transition-colors disabled:opacity-50">
-                {loading ? 'Saving...' : <><CreditCard size={16} /> Continue to Payment</>}
+                {loading ? 'Setting up payment...' : <><CreditCard size={16} /> Continue to Payment</>}
               </button>
             </div>
           )}
 
-          {/* ── STEP 3: PAYMENT ── */}
+          {/* ── STEP 3: PAYMENT (Stripe Elements) ── */}
           {step === 'payment' && (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-[#111] border border-white/5 text-sm space-y-3">
@@ -336,45 +368,56 @@ export default function CheckoutFlow() {
 
               <h2 className="text-white/50 text-xs uppercase tracking-wider font-heading pt-2">Payment</h2>
 
-              {/* Mock credit card form — will be replaced with Stripe Elements */}
-              <div className="p-5 rounded-xl bg-[#0e0e12] border border-white/10">
-                <div className="flex items-center gap-2 mb-4">
-                  <CreditCard size={16} className="text-gold/60" />
-                  <span className="text-white/50 text-xs font-heading tracking-wider uppercase">Credit Card</span>
-                  <div className="ml-auto flex gap-1.5">
-                    <div className="w-8 h-5 rounded bg-white/5 border border-white/10 flex items-center justify-center text-[8px] text-white/30 font-bold">VISA</div>
-                    <div className="w-8 h-5 rounded bg-white/5 border border-white/10 flex items-center justify-center text-[8px] text-white/30 font-bold">MC</div>
-                  </div>
+              {clientSecret ? (
+                <Elements
+                  stripe={stripePromise}
+                  options={{
+                    clientSecret,
+                    appearance: {
+                      theme: 'night',
+                      variables: {
+                        colorPrimary: '#d0b970',
+                        colorBackground: '#0e0e12',
+                        colorText: '#ffffff',
+                        colorDanger: '#ef4444',
+                        fontFamily: 'system-ui, sans-serif',
+                        borderRadius: '12px',
+                        spacingUnit: '4px',
+                      },
+                      rules: {
+                        '.Input': {
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          backgroundColor: '#0c0c0e',
+                          padding: '14px 16px',
+                        },
+                        '.Input:focus': {
+                          border: '1px solid rgba(208,185,112,0.4)',
+                          boxShadow: 'none',
+                        },
+                        '.Label': {
+                          color: 'rgba(255,255,255,0.5)',
+                          fontSize: '11px',
+                          letterSpacing: '0.05em',
+                          textTransform: 'uppercase',
+                        },
+                      },
+                    },
+                  }}
+                >
+                  <StripePaymentForm
+                    onSuccess={handlePaymentSuccess}
+                    onError={setError}
+                    amount={(subtotal || 0) + shippingCost}
+                    loading={loading}
+                    setLoading={setLoading}
+                  />
+                </Elements>
+              ) : (
+                <div className="p-8 text-center">
+                  <div className="animate-spin w-8 h-8 border-2 border-gold/30 border-t-gold rounded-full mx-auto mb-3" />
+                  <p className="text-white/30 text-sm font-heading">Loading payment...</p>
                 </div>
-
-                <div className="space-y-3">
-                  <input type="text" value={cardNumber} onChange={e => setCardNumber(formatCardNumber(e.target.value))}
-                    placeholder="Card number" maxLength={19} className={inputCls} autoComplete="cc-number" />
-                  <input type="text" value={cardName} onChange={e => setCardName(e.target.value)}
-                    placeholder="Name on card" className={inputCls} autoComplete="cc-name" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input type="text" value={cardExpiry} onChange={e => setCardExpiry(formatExpiry(e.target.value))}
-                      placeholder="MM / YY" maxLength={7} className={inputCls} autoComplete="cc-exp" />
-                    <input type="text" value={cardCvc} onChange={e => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                      placeholder="CVC" maxLength={4} className={inputCls} autoComplete="cc-csc" />
-                  </div>
-                </div>
-
-                <div className="mt-3 p-2.5 rounded-lg bg-amber-500/5 border border-amber-500/15">
-                  <p className="text-amber-300/60 text-[10px] font-heading">Demo Mode — No real charges. Use any card number (e.g. 4242 4242 4242 4242)</p>
-                </div>
-              </div>
-
-              <button onClick={handlePaymentSubmit} disabled={loading}
-                className="w-full py-4 mt-4 bg-gold text-[#0a0a0a] font-heading font-semibold text-sm tracking-wider uppercase flex items-center justify-center gap-2 hover:bg-gold/90 transition-colors disabled:opacity-50">
-                <Lock size={16} />
-                {loading ? 'Processing...' : `Pay ${formatPrice((subtotal || 0) + shippingCost)}`}
-              </button>
-
-              <div className="flex items-center justify-center gap-2 pt-2">
-                <Lock size={12} className="text-white/15" />
-                <span className="text-white/15 text-[10px] font-heading tracking-wider">Secured with 256-bit SSL encryption</span>
-              </div>
+              )}
             </div>
           )}
         </div>

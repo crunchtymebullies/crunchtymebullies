@@ -130,12 +130,24 @@ function normalizeImageForSave(img: any): any {
 function normalizeGalleryForSave(gallery: any[]): any[] {
   if (!gallery || !Array.isArray(gallery)) return []
   return gallery
-    .map((img) => normalizeImageForSave(img))
+    .map((item) => {
+      if (item._type === 'galleryVideo') {
+        // Video items — normalize the nested video file reference
+        const ref = item.video?.asset?._ref || item.video?.asset?._id
+        if (!ref) return null
+        return {
+          _type: 'galleryVideo',
+          _key: item._key || `gallery-v-${Date.now()}`,
+          video: { _type: 'file', asset: { _type: 'reference', _ref: ref } },
+          ...(item.caption ? { caption: item.caption } : {}),
+        }
+      }
+      // Image items
+      const normalized = normalizeImageForSave(item)
+      if (!normalized) return null
+      return { ...normalized, _key: item._key || `gallery-${Date.now()}` }
+    })
     .filter(Boolean)
-    .map((img: any, i: number) => ({
-      ...img,
-      _key: img._key || `gallery-${i}-${Date.now()}`,
-    }))
 }
 
 function dogToForm(dog: DogAdmin): DogFormData {
@@ -249,7 +261,7 @@ const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: bool
   { id: 'store', label: 'Store', icon: 'store', badge: true },
   { id: 'customers', label: 'Customers', icon: 'customers', comingSoon: true },
   { id: 'payments', label: 'Payments', icon: 'payments', comingSoon: true },
-  { id: 'messages', label: 'Messages', icon: 'messages', comingSoon: true },
+  { id: 'messages', label: 'Email', icon: 'messages' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
   { id: 'analytics', label: 'Analytics', icon: 'analytics', comingSoon: true },
 ]
@@ -569,16 +581,20 @@ export default function ManagePage() {
     finally { setUploadingMain(false) }
   }
 
-  const uploadGalleryImages = async (files: FileList) => {
+  const uploadGalleryMedia = async (files: FileList) => {
     setUploadingGallery(true)
-    const newImages: any[] = []
+    const newItems: any[] = []
     for (const file of Array.from(files)) {
       try {
         const result = await adminUpload(file, form.name || 'dog')
-        newImages.push({ _type: 'image', _key: genKey(), asset: { _type: 'reference', _ref: result._id } })
+        if (file.type.startsWith('video/')) {
+          newItems.push({ _type: 'galleryVideo', _key: genKey(), video: { _type: 'file', asset: { _type: 'reference', _ref: result._id } } })
+        } else {
+          newItems.push({ _type: 'image', _key: genKey(), asset: { _type: 'reference', _ref: result._id } })
+        }
       } catch (err: any) { showToast(`Failed: ${file.name}`, 'error') }
     }
-    if (newImages.length > 0) setForm(f => ({ ...f, gallery: [...f.gallery, ...newImages] }))
+    if (newItems.length > 0) setForm(f => ({ ...f, gallery: [...f.gallery, ...newItems] }))
     setUploadingGallery(false)
   }
 
@@ -916,6 +932,7 @@ export default function ManagePage() {
                     <button onClick={() => switchTab('dogs')} className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:bg-emerald-500/15 transition-colors text-left"><div className="text-emerald-400 mb-2">{icons.dogs}</div><p className="text-white text-sm font-heading">Manage Dogs</p></button>
                     <button onClick={() => switchTab('services')} className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors text-left"><div className="text-amber-400 mb-2">{icons.services}</div><p className="text-white text-sm font-heading">Services</p></button>
                     <button onClick={() => switchTab('settings')} className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 transition-colors text-left"><div className="text-blue-400 mb-2">{icons.settings}</div><p className="text-white text-sm font-heading">Settings</p></button>
+                    <a href="/go/inbox" className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors text-left block"><div className="text-purple-400 mb-2">{icons.messages}</div><p className="text-white text-sm font-heading">Email Inbox</p></a>
                   </div>
                 </div>
                 <div>
@@ -975,30 +992,41 @@ export default function ManagePage() {
 
                 {/* Gallery with reorder */}
                 <div>
-                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Gallery Photos {form.gallery.length > 0 && <span className="text-white/20">({form.gallery.length})</span>}</label>
+                  <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Gallery Photos & Videos {form.gallery.length > 0 && <span className="text-white/20">({form.gallery.length})</span>}</label>
                   {form.gallery.length > 0 && (
                     <div className="space-y-2 mb-3">
-                      {form.gallery.map((img: any, i: number) => (
-                        <div key={img._key || i} className="flex items-center gap-2 p-2 rounded-lg bg-[#111] border border-white/5">
-                          <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#0a0a0a] shrink-0 border border-white/5">
-                            <img src={getImageUrl(img)} alt={`#${i + 1}`} className="w-full h-full object-cover" />
+                      {form.gallery.map((item: any, i: number) => {
+                        const isVideo = item._type === 'galleryVideo'
+                        const thumbUrl = isVideo ? getImageUrl(item.video) : getImageUrl(item)
+                        return (
+                        <div key={item._key || i} className="flex items-center gap-2 p-2 rounded-lg bg-[#111] border border-white/5">
+                          <div className="w-14 h-14 rounded-lg overflow-hidden bg-[#0a0a0a] shrink-0 border border-white/5 relative">
+                            {isVideo ? (
+                              <>
+                                <video src={thumbUrl} className="w-full h-full object-cover" muted preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/30"><span className="text-white text-lg">▶</span></div>
+                              </>
+                            ) : (
+                              <img src={thumbUrl} alt={`#${i + 1}`} className="w-full h-full object-cover" />
+                            )}
                           </div>
-                          <span className="text-white/30 text-xs font-heading w-6 text-center shrink-0">#{i + 1}</span>
+                          <span className="text-white/30 text-xs font-heading w-6 text-center shrink-0">#{i + 1}{isVideo && <span className="block text-[8px] text-blue-400">VID</span>}</span>
                           <div className="flex flex-col gap-0.5 shrink-0">
-                            <button type="button" onClick={() => moveGalleryImage(img._key, 'up')} disabled={i === 0} className="text-white/30 hover:text-gold disabled:opacity-20 transition-colors">{icons.up}</button>
-                            <button type="button" onClick={() => moveGalleryImage(img._key, 'down')} disabled={i === form.gallery.length - 1} className="text-white/30 hover:text-gold disabled:opacity-20 transition-colors">{icons.down}</button>
+                            <button type="button" onClick={() => moveGalleryImage(item._key, 'up')} disabled={i === 0} className="text-white/30 hover:text-gold disabled:opacity-20 transition-colors">{icons.up}</button>
+                            <button type="button" onClick={() => moveGalleryImage(item._key, 'down')} disabled={i === form.gallery.length - 1} className="text-white/30 hover:text-gold disabled:opacity-20 transition-colors">{icons.down}</button>
                           </div>
                           <div className="flex gap-1.5 ml-auto shrink-0">
-                            <button type="button" onClick={() => setAsMainImage(img)} className="px-2 py-1 rounded text-[10px] font-heading border border-gold/20 text-gold/60 hover:bg-gold/10 transition-colors">Set Main</button>
-                            <button type="button" onClick={() => removeGalleryImage(img._key)} className="px-2 py-1 rounded text-[10px] font-heading border border-red-500/20 text-red-400/60 hover:bg-red-500/10 transition-colors">Remove</button>
+                            {!isVideo && <button type="button" onClick={() => setAsMainImage(item)} className="px-2 py-1 rounded text-[10px] font-heading border border-gold/20 text-gold/60 hover:bg-gold/10 transition-colors">Set Main</button>}
+                            <button type="button" onClick={() => removeGalleryImage(item._key)} className="px-2 py-1 rounded text-[10px] font-heading border border-red-500/20 text-red-400/60 hover:bg-red-500/10 transition-colors">Remove</button>
                           </div>
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                   <label className={`block w-full py-4 border-2 border-dashed border-gold/20 rounded-lg text-center cursor-pointer hover:border-gold/40 transition-colors ${uploadingGallery ? 'animate-pulse' : ''}`}>
-                    <span className="text-gold/60 font-body text-sm">{uploadingGallery ? 'Uploading...' : '+ Add Gallery Photos'}</span>
-                    <input type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && uploadGalleryImages(e.target.files)} disabled={uploadingGallery} />
+                    <span className="text-gold/60 font-body text-sm">{uploadingGallery ? 'Uploading...' : '+ Add Photos or Videos'}</span>
+                    <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={e => e.target.files && uploadGalleryMedia(e.target.files)} disabled={uploadingGallery} />
                   </label>
                 </div>
 
@@ -1289,7 +1317,7 @@ export default function ManagePage() {
                           <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${product.status === 'published' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/10 text-white/40 border-white/20'}`}>{product.status}</span>
                         </button>
                         <span className="text-white/25 text-xs font-body">{product.variants_count}v</span>
-                        {product.first_price && <span className="text-gold/50 text-xs font-heading">${(product.first_price.amount / 100).toFixed(2)}</span>}
+                        {product.first_price && <span className="text-gold/50 text-xs font-heading">${product.first_price.amount.toFixed(2)}</span>}
                       </div>
                     </div>
                   </div>
@@ -1402,7 +1430,7 @@ export default function ManagePage() {
             )}
             {activeTab === 'customers' && <ComingSoon title="Customer Management" description="Track buyers, manage inquiries, view purchase history, and build your client relationships." icon="customers" />}
             {activeTab === 'payments' && <ComingSoon title="Payments" description="Accept deposits, process payments with Stripe, track revenue, and manage payment history." icon="payments" />}
-            {activeTab === 'messages' && <ComingSoon title="Messages" description="Communicate with customers, send updates about litters, and manage inquiries all in one place." icon="messages" />}
+            {activeTab === 'messages' && (() => { if (typeof window !== 'undefined') window.location.href = '/go/inbox'; return <div className="flex items-center justify-center py-20"><p className="text-white/40 font-body">Redirecting to Email Inbox...</p></div>; })()}
             {activeTab === 'analytics' && <ComingSoon title="Analytics" description="Track website traffic, sales metrics, popular dogs, and conversion rates with detailed reports." icon="analytics" />}
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Eye } from 'lucide-react'
@@ -11,40 +11,24 @@ export default function ProductCard({ product, index = 0, onQuickView }: { produ
   const cardRef = useRef<HTMLDivElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
   const [isHovered, setIsHovered] = useState(false)
+  const rafRef = useRef<number>(0)
 
-  // GSAP scroll reveal
-  useEffect(() => {
-    const el = cardRef.current
-    if (!el) return
-    import('gsap').then(({ gsap }) => {
-      import('gsap/ScrollTrigger').then(({ ScrollTrigger }) => {
-        gsap.registerPlugin(ScrollTrigger)
-        gsap.fromTo(el,
-          { y: 60, opacity: 0, scale: 0.95 },
-          {
-            y: 0, opacity: 1, scale: 1,
-            duration: 0.7,
-            delay: index * 0.08,
-            ease: 'power3.out',
-            scrollTrigger: { trigger: el, start: 'top 90%', once: true }
-          }
-        )
-      })
-    })
-  }, [index])
-
-  // 3D tilt + glow follow
+  // Throttled 3D tilt + glow follow
   const handleMouseMove = (e: React.MouseEvent) => {
-    const el = cardRef.current
-    const glow = glowRef.current
-    if (!el || !glow) return
-    const rect = el.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / rect.width
-    const y = (e.clientY - rect.top) / rect.height
-    const tiltX = (0.5 - y) * 12
-    const tiltY = (x - 0.5) * 12
-    el.style.transform = `perspective(800px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.02)`
-    glow.style.background = `radial-gradient(600px circle at ${x * 100}% ${y * 100}%, rgba(208,185,112,0.12), transparent 60%)`
+    if (rafRef.current) return
+    rafRef.current = requestAnimationFrame(() => {
+      const el = cardRef.current
+      const glow = glowRef.current
+      if (!el || !glow) { rafRef.current = 0; return }
+      const rect = el.getBoundingClientRect()
+      const x = (e.clientX - rect.left) / rect.width
+      const y = (e.clientY - rect.top) / rect.height
+      const tiltX = (0.5 - y) * 12
+      const tiltY = (x - 0.5) * 12
+      el.style.transform = `perspective(800px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.02)`
+      glow.style.background = `radial-gradient(600px circle at ${x * 100}% ${y * 100}%, rgba(208,185,112,0.12), transparent 60%)`
+      rafRef.current = 0
+    })
   }
 
   const handleMouseLeave = () => {
@@ -56,7 +40,6 @@ export default function ProductCard({ product, index = 0, onQuickView }: { produ
   }
 
   const priceRange = getPriceRange(product)
-  const lowestPrice = getLowestPrice(product)
   const colorCount = product.options?.find(o => o.title === 'Color')?.values?.length || 0
 
   return (
@@ -65,8 +48,8 @@ export default function ProductCard({ product, index = 0, onQuickView }: { produ
       onMouseEnter={() => setIsHovered(true)}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      className="relative group will-change-transform"
-      style={{ transition: 'transform 0.15s ease-out' }}
+      className="relative group will-change-transform animate-fade-in-up"
+      style={{ transition: 'transform 0.15s ease-out', animationDelay: `${index * 80}ms`, animationFillMode: 'both' }}
     >
       {/* Glow effect layer */}
       <div ref={glowRef} className="absolute inset-0 rounded-2xl pointer-events-none z-10 transition-opacity duration-300" />

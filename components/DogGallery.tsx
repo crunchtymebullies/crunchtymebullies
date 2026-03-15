@@ -3,27 +3,43 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { gsap, useGSAP } from '@/lib/gsapConfig'
 
+interface MediaItem {
+  url: string
+  type: 'image' | 'video'
+}
+
 interface DogGalleryProps {
-  images: string[]
+  /** @deprecated Use `media` instead */
+  images?: string[]
+  media?: MediaItem[]
   name?: string
 }
 
-export default function DogGallery({ images, name }: DogGalleryProps) {
+export default function DogGallery({ images, media, name }: DogGalleryProps) {
+  // Support both old `images` prop (string[]) and new `media` prop
+  const items: MediaItem[] = media
+    ? media
+    : (images || []).map(url => ({ url, type: 'image' as const }))
+
   const containerRef = useRef<HTMLDivElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
   const autoplayRef = useRef<gsap.core.Tween | null>(null)
   const isAnimatingRef = useRef(false)
   const gsapReadyRef = useRef(false)
   const touchStartRef = useRef<{ x: number; y: number } | null>(null)
+  const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map())
 
   const [active, setActive] = useState(0)
   const [isHovering, setIsHovering] = useState(false)
+  const [videoPlaying, setVideoPlaying] = useState(false)
 
-  const count = images.length
+  const count = items.length
   const hasMultiple = count > 1
+  const activeItem = items[active]
+  const isActiveVideo = activeItem?.type === 'video'
   const SLIDE_INTERVAL = 5 // seconds
 
-  // Transition patterns — cycles through different reveals
+  // Transition patterns
   const transitions = [
     { from: 'polygon(0 0, 0 0, 0 100%, 0 100%)', to: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' },
     { from: 'circle(0% at 50% 50%)', to: 'circle(75% at 50% 50%)' },
@@ -32,10 +48,19 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
     { from: 'polygon(100% 0, 100% 0, 100% 100%, 100% 100%)', to: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' },
   ]
 
+  // Pause all videos except the active one
+  const pauseAllVideos = useCallback(() => {
+    videoRefs.current.forEach((video) => {
+      if (!video.paused) video.pause()
+    })
+    setVideoPlaying(false)
+  }, [])
+
   const goToSlide = useCallback(
     (index: number) => {
       if (isAnimatingRef.current || index === active || !containerRef.current) return
       isAnimatingRef.current = true
+      pauseAllVideos()
 
       const container = containerRef.current
       const currentSlide = container.querySelector('.slide-active') as HTMLElement
@@ -46,8 +71,9 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
       }
 
       const t = transitions[Math.floor(Math.random() * transitions.length)]
+      const nextItem = items[index]
 
-      // Ken Burns — zoom on the current slide as it exits
+      // Ken Burns on current slide (only for images)
       const currentImg = currentSlide.querySelector('img')
       if (currentImg) {
         gsap.to(currentImg, { scale: 1.15, duration: 1.2, ease: 'power2.inOut' })
@@ -56,8 +82,10 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
       // Prepare next slide
       nextSlide.style.zIndex = '2'
       nextSlide.style.visibility = 'visible'
-      const nextImg = nextSlide.querySelector('img')
-      if (nextImg) gsap.set(nextImg, { scale: 1.1 })
+      if (nextItem.type === 'image') {
+        const nextImg = nextSlide.querySelector('img')
+        if (nextImg) gsap.set(nextImg, { scale: 1.1 })
+      }
 
       // Clip-path reveal
       gsap.fromTo(nextSlide,
@@ -65,7 +93,10 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
         {
           clipPath: t.to, duration: 1.2, ease: 'power3.inOut',
           onComplete: () => {
-            if (nextImg) gsap.to(nextImg, { scale: 1.0, duration: SLIDE_INTERVAL, ease: 'none' })
+            if (nextItem.type === 'image') {
+              const nextImg = nextSlide.querySelector('img')
+              if (nextImg) gsap.to(nextImg, { scale: 1.0, duration: SLIDE_INTERVAL, ease: 'none' })
+            }
             currentSlide.classList.remove('slide-active')
             currentSlide.style.zIndex = '0'
             currentSlide.style.visibility = 'hidden'
@@ -85,7 +116,7 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
         gsap.fromTo(flash, { opacity: 0 }, { opacity: 0.15, duration: 0.3, yoyo: true, repeat: 1, ease: 'power2.inOut' })
       }
     },
-    [active, count]
+    [active, count, pauseAllVideos]
   )
 
   const goNext = useCallback(() => {
@@ -96,27 +127,40 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
     goToSlide((active - 1 + count) % count)
   }, [active, count, goToSlide])
 
-  // GSAP enhancement — Ken Burns on first image (progressive enhancement only)
+  // Toggle video play/pause
+  const toggleVideo = useCallback(() => {
+    const video = videoRefs.current.get(active)
+    if (!video) return
+    if (video.paused) {
+      video.play()
+      setVideoPlaying(true)
+    } else {
+      video.pause()
+      setVideoPlaying(false)
+    }
+  }, [active])
+
+  // GSAP — Ken Burns on first image
   useGSAP(
     () => {
       if (!containerRef.current || count === 0) return
       gsapReadyRef.current = true
+      if (items[0]?.type !== 'image') return
 
       const firstSlide = containerRef.current.querySelector('[data-slide="0"]') as HTMLElement
       if (!firstSlide) return
 
       const img = firstSlide.querySelector('img')
       if (img) {
-        // Gentle Ken Burns zoom-out on first load
         gsap.fromTo(img, { scale: 1.15 }, { scale: 1.0, duration: SLIDE_INTERVAL, ease: 'none' })
       }
     },
     { scope: containerRef, dependencies: [] }
   )
 
-  // Autoplay progress bar
+  // Autoplay progress bar — pause when a video is playing
   useEffect(() => {
-    if (!hasMultiple || isHovering) {
+    if (!hasMultiple || isHovering || videoPlaying) {
       if (autoplayRef.current) { autoplayRef.current.kill(); autoplayRef.current = null }
       return
     }
@@ -124,7 +168,7 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
     if (progressRef.current) {
       gsap.set(progressRef.current, { scaleX: 0 })
       autoplayRef.current = gsap.to(progressRef.current, {
-        scaleX: 1, duration: SLIDE_INTERVAL, ease: 'none',
+        scaleX: 1, duration: isActiveVideo ? 15 : SLIDE_INTERVAL, ease: 'none',
         onComplete: () => goNext(),
       })
     }
@@ -132,9 +176,9 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
     return () => {
       if (autoplayRef.current) { autoplayRef.current.kill(); autoplayRef.current = null }
     }
-  }, [active, hasMultiple, isHovering, goNext])
+  }, [active, hasMultiple, isHovering, videoPlaying, isActiveVideo, goNext])
 
-  // Touch / swipe support
+  // Touch / swipe
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   }
@@ -154,12 +198,13 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowLeft') goPrev()
       if (e.key === 'ArrowRight') goNext()
+      if (e.key === ' ' && isActiveVideo) { e.preventDefault(); toggleVideo() }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [goNext, goPrev])
+  }, [goNext, goPrev, isActiveVideo, toggleVideo])
 
-  if (!images || count === 0) {
+  if (!items || count === 0) {
     return (
       <div className="relative aspect-square overflow-hidden rounded-lg bg-[#111] border border-white/5 flex items-center justify-center">
         <div className="text-center">
@@ -174,7 +219,7 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
 
   return (
     <div ref={containerRef} className="select-none">
-      {/* ─── Main Slideshow ─── */}
+      {/* Main Slideshow */}
       <div
         className="relative aspect-square overflow-hidden rounded-lg bg-[#0a0a0a]"
         onMouseEnter={() => setIsHovering(true)}
@@ -182,8 +227,8 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Slide layers — first slide visible by default, others hidden */}
-        {images.map((src, i) => (
+        {/* Slide layers */}
+        {items.map((item, i) => (
           <div
             key={i}
             data-slide={i}
@@ -193,14 +238,45 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
               zIndex: i === 0 ? 1 : 0,
             }}
           >
-            <img
-              src={src}
-              alt={name ? `${name} — photo ${i + 1}` : `Photo ${i + 1}`}
-              className="w-full h-full object-cover will-change-transform"
-              draggable={false}
-            />
+            {item.type === 'video' ? (
+              <video
+                ref={el => { if (el) videoRefs.current.set(i, el) }}
+                src={item.url}
+                className="w-full h-full object-cover"
+                playsInline
+                loop
+                muted={false}
+                preload="metadata"
+                onClick={toggleVideo}
+                onEnded={() => setVideoPlaying(false)}
+              />
+            ) : (
+              <img
+                src={item.url}
+                alt={name ? `${name} — photo ${i + 1}` : `Photo ${i + 1}`}
+                className="w-full h-full object-cover will-change-transform"
+                draggable={false}
+              />
+            )}
           </div>
         ))}
+
+        {/* Video play/pause overlay */}
+        {isActiveVideo && (
+          <button
+            onClick={toggleVideo}
+            className="absolute inset-0 z-10 flex items-center justify-center group cursor-pointer"
+            aria-label={videoPlaying ? 'Pause video' : 'Play video'}
+          >
+            <div className={`w-16 h-16 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-hover:bg-black/70 ${videoPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'}`}>
+              {videoPlaying ? (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7 text-white ml-1"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+              )}
+            </div>
+          </button>
+        )}
 
         {/* Gold flash overlay */}
         <div
@@ -234,6 +310,7 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
         {hasMultiple && (
           <div className="absolute top-3 right-3 z-20 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-md border border-white/10">
             <span className="text-white/70 text-[10px] font-heading tracking-[0.2em]">
+              {isActiveVideo && <span className="text-blue-400 mr-1">VIDEO</span>}
               {active + 1}<span className="text-white/25 mx-1">/</span>{count}
             </span>
           </div>
@@ -247,19 +324,28 @@ export default function DogGallery({ images, name }: DogGalleryProps) {
         )}
       </div>
 
-      {/* ─── Thumbnails ─── */}
+      {/* Thumbnails */}
       {hasMultiple && (
         <div className="mt-3 relative">
           <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {images.map((src, i) => (
+            {items.map((item, i) => (
               <button key={i} onClick={() => goToSlide(i)}
                 className={`relative flex-shrink-0 w-16 h-16 sm:w-[72px] sm:h-[72px] overflow-hidden rounded transition-all duration-300 ${
                   i === active
                     ? 'ring-2 ring-gold ring-offset-1 ring-offset-[#0a0a0a] opacity-100 scale-105'
                     : 'border border-white/10 opacity-40 hover:opacity-70'
                 }`}
-                aria-label={`View photo ${i + 1}`}>
-                <img src={src} alt="" className="w-full h-full object-cover" draggable={false} />
+                aria-label={`View ${item.type === 'video' ? 'video' : 'photo'} ${i + 1}`}>
+                {item.type === 'video' ? (
+                  <>
+                    <video src={item.url} className="w-full h-full object-cover" muted preload="metadata" />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white/80"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+                    </div>
+                  </>
+                ) : (
+                  <img src={item.url} alt="" className="w-full h-full object-cover" draggable={false} />
+                )}
                 {i === active && <div className="absolute inset-0 border-2 border-gold/30 rounded" />}
               </button>
             ))}

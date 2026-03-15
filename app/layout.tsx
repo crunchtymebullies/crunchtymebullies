@@ -2,8 +2,6 @@ import type { Metadata } from 'next'
 import { Josefin_Sans, Poppins } from 'next/font/google'
 import localFont from 'next/font/local'
 import './globals.css'
-import { CartProvider } from '@/lib/cart-context'
-
 const josefin = Josefin_Sans({
   subsets: ['latin'],
   variable: '--font-josefin',
@@ -52,9 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${josefin.variable} ${poppins.variable} ${bleuBelle.variable}`}>
       <body>
-        <CartProvider>
-          {children}
-        </CartProvider>
+        {children}
       </body>
     </html>
   )

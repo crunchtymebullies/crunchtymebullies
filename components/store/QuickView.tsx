@@ -42,7 +42,23 @@ export default function QuickView({ product, onClose }: QuickViewProps) {
   }) || product?.variants?.[0]
 
   const price = matchedVariant?.calculated_price
-  const images = product?.thumbnail ? [product.thumbnail, ...(product.images?.map(i => i.url) || [])] : product?.images?.map(i => i.url) || []
+
+  // Parse color images from metadata
+  const colorImages: Record<string, string> = (() => {
+    try {
+      const raw = product?.metadata?.color_images
+      return raw ? JSON.parse(raw) : {}
+    } catch { return {} }
+  })()
+  const colorOption = product?.options?.find(o => o.title.toLowerCase() === 'color')
+  const selectedColor = colorOption ? selectedOptions[colorOption.id] : null
+  const cleanColor = selectedColor?.replace(/^\/\s*/, '') || ''
+  const colorImage = cleanColor ? colorImages[cleanColor] : null
+
+  const baseImages = product?.thumbnail ? [product.thumbnail, ...(product.images?.map(i => i.url) || [])] : product?.images?.map(i => i.url) || []
+  const images = colorImage
+    ? [colorImage, ...baseImages.filter(img => img !== colorImage)]
+    : baseImages
 
   const handleAdd = useCallback(async () => {
     if (!matchedVariant) return
@@ -139,7 +155,7 @@ export default function QuickView({ product, onClose }: QuickViewProps) {
                     {opt.values?.map(val => {
                       const isSelected = selectedOptions[opt.id] === val.value
                       return (
-                        <button key={val.id} onClick={() => setSelectedOptions(prev => ({ ...prev, [opt.id]: val.value }))}
+                        <button key={val.id} onClick={() => { setSelectedOptions(prev => ({ ...prev, [opt.id]: val.value })); if (opt.title.toLowerCase() === 'color') setImageIdx(0); }}
                           className={`px-3 py-1.5 rounded-lg text-xs font-heading border transition-all ${
                             isSelected
                               ? 'border-gold bg-gold/10 text-gold'

@@ -8,7 +8,7 @@ import { Shield, Award, Heart, ArrowLeft, Calendar, Weight, Dna, FileText, Exter
 import type { Dog as DogType } from '@/lib/types'
 import type { Metadata } from 'next'
 
-export const revalidate = 60
+export const revalidate = 3600
 
 export async function generateStaticParams() {
   const dogs = await client.fetch<DogType[]>(DOGS_QUERY).catch(() => [])
@@ -44,20 +44,26 @@ export default async function DogDetailPage({ params }: { params: { slug: string
   const dog = await client.fetch<any>(DOG_BY_SLUG_QUERY, { slug: params.slug }).catch(() => null)
   if (!dog) notFound()
 
-  const safeImageUrl = (img: any): string | null => {
+  const safeMediaUrl = (item: any): { url: string; type: 'image' | 'video' } | null => {
     try {
-      if (!img?.asset) return null
-      // Handle both reference format (_ref) and dereferenced format (url)
-      if (img.asset.url) return img.asset.url
-      if (img.asset._ref) return urlFor(img).width(1200).height(1200).url()
+      // Video gallery item
+      if (item?._type === 'galleryVideo') {
+        const videoUrl = item.video?.asset?.url
+        if (videoUrl) return { url: videoUrl, type: 'video' }
+        return null
+      }
+      // Image
+      if (!item?.asset) return null
+      if (item.asset.url) return { url: item.asset.url, type: 'image' }
+      if (item.asset._ref) return { url: urlFor(item).width(1200).height(1200).url(), type: 'image' }
       return null
     } catch { return null }
   }
 
-  const allImages = [
-    safeImageUrl(dog.mainImage),
-    ...(dog.gallery || []).map((img: any) => safeImageUrl(img)),
-  ].filter(Boolean) as string[]
+  const allMedia = [
+    { url: safeMediaUrl(dog.mainImage)?.url, type: 'image' as const },
+    ...(dog.gallery || []).map((item: any) => safeMediaUrl(item)),
+  ].filter(Boolean) as { url: string; type: 'image' | 'video' }[]
 
   const status = statusDisplay[dog.status] || statusDisplay.available
 
@@ -83,7 +89,7 @@ export default async function DogDetailPage({ params }: { params: { slug: string
 
       <div className="page-section py-12 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16">
-          <DogGallery images={allImages} name={dog.name} />
+          <DogGallery media={allMedia} name={dog.name} />
 
           <div>
             <Reveal animation="fade-right" delay={100}>
