@@ -167,31 +167,67 @@ function dogToForm(dog: DogAdmin): DogFormData {
 }
 
 // ─── API Helpers ──────────────────────────────────────────────────────────────
-function useAdminApi(password: string) {
+function authHeaders(token: string): Record<string, string> {
+  return { 'Authorization': `Bearer ${token}` }
+}
+
+function useAdminApi(token: string) {
   const adminFetch = useCallback(async (url: string) => {
-    const res = await fetch(url, { headers: { 'x-admin-password': password } })
+    const res = await fetch(url, { headers: authHeaders(token) })
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Request failed') }
     return res.json()
-  }, [password])
+  }, [token])
 
   const adminPost = useCallback(async (url: string, body: Record<string, unknown>) => {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-password': password },
+      headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
       body: JSON.stringify(body),
     })
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Request failed') }
     return res.json()
-  }, [password])
+  }, [token])
 
   const adminUpload = useCallback(async (file: File, label?: string) => {
+    const isLarge = file.size > 4 * 1024 * 1024 // > 4MB = upload direct to Sanity
+
+    if (isLarge) {
+      // Get Sanity credentials from server, then upload directly (bypasses Vercel 4.5MB limit)
+      const configRes = await fetch('/api/go/upload-token', { headers: authHeaders(token) })
+      if (!configRes.ok) throw new Error('Failed to get upload config')
+      const { token: sanityToken, projectId, dataset } = await configRes.json()
+
+      const isVideo = file.type.startsWith('video/')
+      const assetType = isVideo ? 'files' : 'images'
+      const filename = label
+        ? `${label.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.${file.name.split('.').pop()}`
+        : file.name
+
+      const uploadRes = await fetch(
+        `https://${projectId}.api.sanity.io/v2024-01-01/assets/${assetType}/${dataset}?filename=${encodeURIComponent(filename)}`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${sanityToken}`, 'Content-Type': file.type },
+          body: file,
+        }
+      )
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}))
+        throw new Error(err?.error?.description || 'Upload failed')
+      }
+      const result = await uploadRes.json()
+      const asset = result.document
+      return { _id: asset._id, url: asset.url } as { _id: string; url: string }
+    }
+
+    // Small files: proxy through API route as before
     const fd = new FormData()
     fd.append('file', file)
     if (label) fd.append('label', label)
-    const res = await fetch('/api/go/upload', { method: 'POST', headers: { 'x-admin-password': password }, body: fd })
+    const res = await fetch('/api/go/upload', { method: 'POST', headers: authHeaders(token), body: fd })
     if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error(d.error || 'Upload failed') }
     return res.json() as Promise<{ _id: string; url: string }>
-  }, [password])
+  }, [token])
 
   return { adminFetch, adminPost, adminUpload } as const
 }
@@ -260,7 +296,7 @@ const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: bool
   { id: 'services', label: 'Services', icon: 'services', badge: true },
   { id: 'store', label: 'Store', icon: 'store', badge: true },
   { id: 'customers', label: 'Customers', icon: 'customers', comingSoon: true },
-  { id: 'payments', label: 'Payments', icon: 'payments', comingSoon: true },
+  { id: 'payments', label: 'Payments', icon: 'payments' },
   { id: 'messages', label: 'Email', icon: 'messages' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
   { id: 'analytics', label: 'Analytics', icon: 'analytics', comingSoon: true },
@@ -317,11 +353,182 @@ function ComingSoon({ title, description, icon }: { title: string; description: 
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PAYMENTS PANEL
+// ═══════════════════════════════════════════════════════════════════════════════
+interface PayLink {
+  id: string; short_code: string; amount: number; customer_name: string | null
+  customer_email: string | null; description: string | null; status: string
+  stripe_payment_intent_id: string | null; created_at: string; paid_at: string | null
+}
+
+function PaymentsPanel({ adminFetch, adminPost, showToast }: {
+  adminFetch: (url: string) => Promise<any>
+  adminPost: (url: string, body: Record<string, unknown>) => Promise<any>
+  showToast: (msg: string, type: 'success' | 'error') => void
+}) {
+  const [links, setLinks] = useState<PayLink[]>([])
+  const [loading, setLoading] = useState(true)
+  const [view, setView] = useState<'list' | 'create'>('list')
+  const [creating, setCreating] = useState(false)
+  const [form, setForm] = useState({ amount: '', customerName: '', customerEmail: '', description: '' })
+  const [copiedId, setCopiedId] = useState('')
+
+  const fetchLinks = useCallback(async () => {
+    try {
+      const data = await adminFetch('/api/go/payments')
+      setLinks(data.links || [])
+    } catch { /* ignore */ }
+    setLoading(false)
+  }, [adminFetch])
+
+  useEffect(() => { fetchLinks() }, [fetchLinks])
+
+  const handleCreate = async (sendEmail: boolean) => {
+    if (!form.amount || parseFloat(form.amount) <= 0) { showToast('Enter a valid amount', 'error'); return }
+    if (sendEmail && !form.customerEmail) { showToast('Email required to send', 'error'); return }
+    setCreating(true)
+    try {
+      const data = await adminPost('/api/go/payments', {
+        amount: form.amount, customerName: form.customerName,
+        customerEmail: form.customerEmail, description: form.description,
+        sendEmail,
+      })
+      showToast(sendEmail ? 'Pay link sent!' : 'Pay link created!', 'success')
+      if (!sendEmail && data.payUrl) {
+        await navigator.clipboard.writeText(data.payUrl)
+        showToast('Link copied to clipboard', 'success')
+      }
+      setForm({ amount: '', customerName: '', customerEmail: '', description: '' })
+      setView('list')
+      fetchLinks()
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to create', 'error')
+    }
+    setCreating(false)
+  }
+
+  const copyLink = async (code: string) => {
+    const url = `https://crunchtymebullies.com/pay?ref=${code}`
+    await navigator.clipboard.writeText(url)
+    setCopiedId(code)
+    setTimeout(() => setCopiedId(''), 2000)
+  }
+
+  const totalPaid = links.filter(l => l.status === 'paid').reduce((s, l) => s + Number(l.amount), 0)
+  const totalPending = links.filter(l => l.status === 'pending').reduce((s, l) => s + Number(l.amount), 0)
+
+  if (loading) return <div className="flex items-center justify-center py-20"><div className="w-6 h-6 border-2 border-gold/30 border-t-gold rounded-full animate-spin" /></div>
+
+  return (
+    <div>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[
+          { label: 'Total Links', value: links.length, color: 'white' },
+          { label: 'Pending', value: `$${totalPending.toFixed(2)}`, color: '#d4a853' },
+          { label: 'Collected', value: `$${totalPaid.toFixed(2)}`, color: '#4ade80' },
+        ].map(s => (
+          <div key={s.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-4">
+            <p className="text-white/30 text-xs font-heading tracking-wider uppercase mb-1">{s.label}</p>
+            <p className="text-lg font-display" style={{ color: s.color }}>{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Toggle */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-lg font-display text-white">{view === 'list' ? 'Pay Links' : 'New Pay Link'}</h2>
+        <button
+          onClick={() => setView(view === 'list' ? 'create' : 'list')}
+          className="px-4 py-2 rounded-lg text-xs font-heading tracking-wider uppercase transition-colors"
+          style={view === 'list' ? { background: '#d4a853', color: '#000' } : { background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}
+        >
+          {view === 'list' ? '+ New Link' : '← Back'}
+        </button>
+      </div>
+
+      {view === 'create' && (
+        <div className="bg-white/[0.03] border border-white/5 rounded-xl p-6 space-y-4">
+          <div>
+            <label className="text-white/40 text-xs font-heading tracking-wider uppercase block mb-1.5">Amount *</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30">$</span>
+              <input type="number" step="0.01" min="0.50" placeholder="0.00" value={form.amount}
+                onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                className="w-full pl-7 pr-4 py-3 rounded-lg bg-white/5 border border-white/10 text-white text-lg font-display focus:border-gold/50 focus:outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-white/40 text-xs font-heading tracking-wider uppercase block mb-1.5">Name</label>
+              <input value={form.customerName} onChange={e => setForm(f => ({ ...f, customerName: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-gold/50 focus:outline-none" placeholder="Customer name" />
+            </div>
+            <div>
+              <label className="text-white/40 text-xs font-heading tracking-wider uppercase block mb-1.5">Email</label>
+              <input type="email" value={form.customerEmail} onChange={e => setForm(f => ({ ...f, customerEmail: e.target.value }))}
+                className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-gold/50 focus:outline-none" placeholder="customer@email.com" />
+            </div>
+          </div>
+          <div>
+            <label className="text-white/40 text-xs font-heading tracking-wider uppercase block mb-1.5">Description</label>
+            <input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm focus:border-gold/50 focus:outline-none" placeholder="e.g. Deposit for puppy, stud fee..." />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button onClick={() => handleCreate(false)} disabled={creating}
+              className="flex-1 py-3 rounded-lg border border-white/10 text-white text-sm font-heading tracking-wider uppercase hover:bg-white/5 transition-colors disabled:opacity-50">
+              {creating ? '...' : 'Copy Link'}
+            </button>
+            <button onClick={() => handleCreate(true)} disabled={creating}
+              className="flex-1 py-3 rounded-lg text-sm font-heading tracking-wider uppercase transition-colors disabled:opacity-50"
+              style={{ background: '#d4a853', color: '#000' }}>
+              {creating ? '...' : 'Send Email'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {view === 'list' && (
+        <div className="space-y-2">
+          {links.length === 0 && (
+            <p className="text-white/20 text-center py-12 text-sm font-body">No pay links yet. Create one to get started.</p>
+          )}
+          {links.map(link => (
+            <div key={link.id} className="bg-white/[0.03] border border-white/5 rounded-xl p-4 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-white font-display text-lg">${Number(link.amount).toFixed(2)}</span>
+                  <span className={`text-[10px] font-heading tracking-wider uppercase px-2 py-0.5 rounded-full ${
+                    link.status === 'paid' ? 'bg-green-500/10 text-green-400' :
+                    link.status === 'expired' ? 'bg-red-500/10 text-red-400' :
+                    'bg-yellow-500/10 text-yellow-400'
+                  }`}>{link.status}</span>
+                </div>
+                {link.customer_name && <p className="text-white/50 text-sm truncate">{link.customer_name}</p>}
+                {link.description && <p className="text-white/30 text-xs truncate">{link.description}</p>}
+                <p className="text-white/15 text-[10px] mt-1">{new Date(link.created_at).toLocaleDateString()}{link.paid_at ? ` · Paid ${new Date(link.paid_at).toLocaleDateString()}` : ''}</p>
+              </div>
+              {link.status === 'pending' && (
+                <button onClick={() => copyLink(link.short_code)}
+                  className="px-3 py-1.5 rounded-lg border border-white/10 text-white/40 text-xs font-heading hover:text-white hover:border-white/20 transition-colors shrink-0">
+                  {copiedId === link.short_code ? '✓ Copied' : 'Copy'}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN ADMIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function ManagePage() {
   const [authState, setAuthState] = useState<'checking' | 'locked' | 'authenticated'>('checking')
-  const [password, setPassword] = useState('')
+  const [token, setToken] = useState('')
   const [passwordInput, setPasswordInput] = useState('')
   const [authError, setAuthError] = useState('')
   const [authLoading, setAuthLoading] = useState(false)
@@ -335,7 +542,7 @@ export default function ManagePage() {
   }, [])
 
   // Destructure API hooks for stable references (fixes settings strobe bug)
-  const { adminFetch, adminPost, adminUpload } = useAdminApi(password)
+  const { adminFetch, adminPost, adminUpload } = useAdminApi(token)
 
   // Dog state
   const [dogs, setDogs] = useState<DogAdmin[]>([])
@@ -386,9 +593,20 @@ export default function ManagePage() {
 
   // Session check
   useEffect(() => {
-    const saved = sessionStorage.getItem('ct-admin-auth')
-    if (saved) { setPassword(saved); setAuthState('authenticated') }
-    else setAuthState('locked')
+    const saved = localStorage.getItem('ct-admin-token')
+    if (saved) {
+      // Verify token is still valid
+      fetch('/api/go/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: saved }),
+      }).then(res => {
+        if (res.ok) { setToken(saved); setAuthState('authenticated') }
+        else { localStorage.removeItem('ct-admin-token'); setAuthState('locked') }
+      }).catch(() => { setToken(saved); setAuthState('authenticated') }) // offline = trust cached token
+    } else {
+      setAuthState('locked')
+    }
   }, [])
 
   // ─── Browser History Management (Android back button) ────────────────────
@@ -483,8 +701,8 @@ export default function ManagePage() {
       })
       const data = await res.json()
       if (!res.ok) { setAuthError(data.error || 'Login failed'); return }
-      setPassword(passwordInput)
-      sessionStorage.setItem('ct-admin-auth', passwordInput)
+      setToken(data.token)
+      localStorage.setItem('ct-admin-token', data.token)
       setAuthState('authenticated')
     } catch { setAuthError('Connection error') }
     finally { setAuthLoading(false) }
@@ -933,6 +1151,7 @@ export default function ManagePage() {
                     <button onClick={() => switchTab('services')} className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 hover:bg-amber-500/15 transition-colors text-left"><div className="text-amber-400 mb-2">{icons.services}</div><p className="text-white text-sm font-heading">Services</p></button>
                     <button onClick={() => switchTab('settings')} className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/15 transition-colors text-left"><div className="text-blue-400 mb-2">{icons.settings}</div><p className="text-white text-sm font-heading">Settings</p></button>
                     <a href="/go/inbox" className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/15 transition-colors text-left block"><div className="text-purple-400 mb-2">{icons.messages}</div><p className="text-white text-sm font-heading">Email Inbox</p></a>
+                    <a href="/go/design-studio" className="p-4 rounded-xl bg-pink-500/10 border border-pink-500/20 hover:bg-pink-500/15 transition-colors text-left block"><div className="text-pink-400 mb-2"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div><p className="text-white text-sm font-heading">Design Studio</p></a>
                   </div>
                 </div>
                 <div>
@@ -1429,7 +1648,7 @@ export default function ManagePage() {
               </div>
             )}
             {activeTab === 'customers' && <ComingSoon title="Customer Management" description="Track buyers, manage inquiries, view purchase history, and build your client relationships." icon="customers" />}
-            {activeTab === 'payments' && <ComingSoon title="Payments" description="Accept deposits, process payments with Stripe, track revenue, and manage payment history." icon="payments" />}
+            {activeTab === 'payments' && <PaymentsPanel adminFetch={adminFetch} adminPost={adminPost} showToast={showToast} />}
             {activeTab === 'messages' && (() => { if (typeof window !== 'undefined') window.location.href = '/go/inbox'; return <div className="flex items-center justify-center py-20"><p className="text-white/40 font-body">Redirecting to Email Inbox...</p></div>; })()}
             {activeTab === 'analytics' && <ComingSoon title="Analytics" description="Track website traffic, sales metrics, popular dogs, and conversion rates with detailed reports." icon="analytics" />}
           </div>
