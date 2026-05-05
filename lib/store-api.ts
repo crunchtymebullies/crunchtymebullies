@@ -186,11 +186,11 @@ export async function completeCart(cartId: string) {
 // ── Helpers ──
 
 export function formatPrice(amount: number, currency: string = 'usd'): string {
-  // Medusa v2 returns prices in smallest currency unit (cents for USD)
+  // This Medusa instance stores amounts as decimal dollars, not cents
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency.toUpperCase(),
-  }).format(amount / 100)
+  }).format(amount)
 }
 
 export function getLowestPrice(product: StoreProduct): { amount: number; currency: string } | null {
