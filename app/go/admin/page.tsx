@@ -2,9 +2,265 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import OrdersPanel from './OrdersPanel'
+import PWAInstall from '@/components/admin/PWAInstall'
+
+// ─── Team & Access (lives inside the Settings tab) ──────────────────────────────
+// Quick invite generator. Uses the caller's Supabase session cookie, so the
+// invite-token API enforces who may invite (admin / super_admin). Full user
+// list, dev access links and email-account assignment live at /go/settings.
+function TeamAccessSection() {
+  const [role, setRole] = useState<'employee' | 'admin'>('employee')
+  const [provision, setProvision] = useState(false)
+  const [link, setLink] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const generate = async () => {
+    setBusy(true); setErr(''); setLink(''); setCopied(false)
+    try {
+      const r = await fetch('/api/go/invite-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, provision_local: provision }),
+      })
+      const d = await r.json()
+      if (!r.ok) setErr(d.error || 'Could not create invite')
+      else setLink(d.inviteLink)
+    } catch { setErr('Network error — please try again') }
+    setBusy(false)
+  }
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1800) } catch {}
+  }
+
+  return (
+    <div className="border-t border-white/5 pt-6 space-y-4">
+      <div>
+        <h2 className="text-white text-xl font-display mb-1">Team &amp; Access</h2>
+        <p className="text-white/40 text-sm font-body">Invite people to the admin. They open the link and set their own password.</p>
+      </div>
+      <div>
+        <label className="text-white/40 text-xs uppercase tracking-wider font-heading block mb-2">Role</label>
+        <select value={role} onChange={e => setRole(e.target.value as 'employee' | 'admin')}
+          className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:border-gold/50 focus:outline-none">
+          <option value="employee">Employee — restricted to assigned mailboxes</option>
+          <option value="admin">Admin — full access</option>
+        </select>
+      </div>
+      <label className="flex items-center gap-2 text-white/50 text-sm font-body cursor-pointer">
+        <input type="checkbox" checked={provision} onChange={e => setProvision(e.target.checked)} className="accent-gold" />
+        Also create a @crunchtymebullies.com mailbox for them
+      </label>
+      <button onClick={generate} disabled={busy}
+        className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">
+        {busy ? 'Generating…' : 'Generate Invite Link'}
+      </button>
+      {err && <p className="text-red-400 text-sm font-body">{err}</p>}
+      {link && (
+        <div className="bg-[#111] border border-gold/20 rounded-lg p-3 space-y-2">
+          <p className="text-white/40 text-[10px] uppercase tracking-wider font-heading">Invite link — send this to the person</p>
+          <p className="text-gold text-xs font-mono break-all">{link}</p>
+          <button onClick={copy} className="text-xs font-heading px-3 py-1.5 rounded-md bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors">
+            {copied ? 'Copied ✓' : 'Copy link'}
+          </button>
+        </div>
+      )}
+      <Link href="/go/settings" className="inline-flex items-center gap-1 text-white/30 text-xs font-heading hover:text-gold transition-colors">
+        Open full team page (user list &amp; dev access link) →
+      </Link>
+    </div>
+  )
+}
+
+const TA_FIELD = 'w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-gold/50 focus:outline-none'
+
+// ─── Email Accounts manager (Settings tab) ──────────────────────────────────────
+function EmailAccountsManager() {
+  const [accts, setAccts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [ef, setEf] = useState({ display_name: '', color: '#D4A84C', initials: '', signature_html: '' })
+  const [adding, setAdding] = useState(false)
+  const [af, setAf] = useState({ local: '', display_name: '', initials: '', color: '#D4A84C' })
+  const [msg, setMsg] = useState('')
+
+  const load = async () => {
+    setLoading(true)
+    try { const d = await fetch('/api/go/email-accounts').then(r => r.json()); setAccts(Array.isArray(d) ? d : []) }
+    catch { setAccts([]) }
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  const startEdit = (a: any) => { setEditId(a.id); setEf({ display_name: a.display_name || '', color: a.color || '#D4A84C', initials: a.initials || '', signature_html: a.signature_html || '' }) }
+  const saveEdit = async () => {
+    if (!editId) return
+    await fetch('/api/go/email-accounts', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editId, ...ef }) })
+    setEditId(null); load()
+  }
+  const del = async (a: any) => {
+    if (!confirm(`Delete ${a.email}? It will stop sending and receiving.`)) return
+    await fetch(`/api/go/email-accounts?id=${a.id}`, { method: 'DELETE' }); load()
+  }
+  const add = async () => {
+    setMsg('')
+    const local = af.local.trim().toLowerCase().replace(/[^a-z0-9._-]/g, '')
+    if (!local || !af.display_name || !af.initials) { setMsg('Local-part, display name and initials are required'); return }
+    const r = await fetch('/api/go/email-accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: `${local}@crunchtymebullies.com`, display_name: af.display_name, initials: af.initials, color: af.color }) })
+    const d = await r.json()
+    if (!r.ok) { setMsg(d.error || 'Could not create account'); return }
+    setAdding(false); setAf({ local: '', display_name: '', initials: '', color: '#D4A84C' }); load()
+  }
+
+  return (
+    <div className="border-t border-white/5 pt-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-white text-xl font-display mb-1">Email Accounts</h2>
+          <p className="text-white/40 text-sm font-body">Sending addresses on crunchtymebullies.com.</p>
+        </div>
+        <button onClick={() => setAdding(v => !v)} className="text-xs font-heading px-3 py-2 rounded-lg bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20 transition-colors shrink-0">{adding ? 'Cancel' : '+ Add'}</button>
+      </div>
+      {adding && (
+        <div className="bg-[#111] border border-white/10 rounded-lg p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <input value={af.local} onChange={e => setAf(f => ({ ...f, local: e.target.value }))} placeholder="sales" className={TA_FIELD} />
+            <span className="text-white/30 text-xs font-body whitespace-nowrap">@crunchtymebullies.com</span>
+          </div>
+          <input value={af.display_name} onChange={e => setAf(f => ({ ...f, display_name: e.target.value }))} placeholder="Display name (e.g. Sales)" className={TA_FIELD} />
+          <div className="flex items-center gap-2">
+            <input value={af.initials} maxLength={2} onChange={e => setAf(f => ({ ...f, initials: e.target.value.toUpperCase() }))} placeholder="CB" className={`${TA_FIELD} w-20`} />
+            <input type="color" value={af.color} onChange={e => setAf(f => ({ ...f, color: e.target.value }))} className="w-12 h-9 bg-transparent border border-white/10 rounded cursor-pointer" />
+            <button onClick={add} className="ml-auto text-xs font-heading px-4 py-2 rounded-lg bg-gold text-[#0a0a0a] font-semibold hover:bg-gold/90">Create</button>
+          </div>
+          {msg && <p className="text-red-400 text-xs">{msg}</p>}
+        </div>
+      )}
+      {loading ? <p className="text-white/30 text-sm">Loading…</p> : accts.length === 0 ? <p className="text-white/30 text-sm">No accounts yet.</p> : (
+        <div className="space-y-2">
+          {accts.map(a => (
+            <div key={a.id} className="bg-[#111] border border-white/5 rounded-lg p-3">
+              <div className="flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ background: a.color || '#D4A84C' }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-heading truncate">{a.display_name}{a.is_default && <span className="text-[9px] uppercase tracking-wider text-gold/60 ml-2">default</span>}</p>
+                  <p className="text-white/40 text-xs font-body truncate">{a.email}</p>
+                </div>
+                <button onClick={() => editId === a.id ? setEditId(null) : startEdit(a)} className="text-xs font-heading text-white/40 hover:text-gold transition-colors shrink-0">{editId === a.id ? 'Close' : 'Edit'}</button>
+                <button onClick={() => del(a)} className="text-xs font-heading text-red-400/70 hover:text-red-400 transition-colors shrink-0">Delete</button>
+              </div>
+              {editId === a.id && (
+                <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
+                  <input value={ef.display_name} onChange={e => setEf(f => ({ ...f, display_name: e.target.value }))} placeholder="Display name" className={TA_FIELD} />
+                  <div className="flex items-center gap-2">
+                    <input value={ef.initials} maxLength={2} onChange={e => setEf(f => ({ ...f, initials: e.target.value.toUpperCase() }))} placeholder="Initials" className={`${TA_FIELD} w-20`} />
+                    <input type="color" value={ef.color || '#D4A84C'} onChange={e => setEf(f => ({ ...f, color: e.target.value }))} className="w-12 h-9 bg-transparent border border-white/10 rounded cursor-pointer" />
+                  </div>
+                  <textarea value={ef.signature_html} onChange={e => setEf(f => ({ ...f, signature_html: e.target.value }))} rows={3} placeholder="Signature HTML (optional)" className={`${TA_FIELD} resize-none`} />
+                  <button onClick={saveEdit} className="text-xs font-heading px-4 py-2 rounded-lg bg-gold text-[#0a0a0a] font-semibold hover:bg-gold/90">Save</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Employee Email Access (Settings tab) ───────────────────────────────────────
+function EmployeeAccessManager() {
+  const [emps, setEmps] = useState<any[]>([])
+  const [accts, setAccts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState<string | null>(null)
+  const [grants, setGrants] = useState<Record<string, Set<string>>>({})
+  const [busy, setBusy] = useState(false)
+
+  const load = async () => {
+    setLoading(true)
+    try {
+      const [e, a] = await Promise.all([
+        fetch('/api/go/employees').then(r => r.json()),
+        fetch('/api/go/email-accounts').then(r => r.json()),
+      ])
+      setEmps(Array.isArray(e) ? e : [])
+      setAccts(Array.isArray(a) ? a : [])
+    } catch { /* noop */ }
+    setLoading(false)
+  }
+  useEffect(() => { load() }, [])
+
+  const expand = async (emp: any) => {
+    if (open === emp.id) { setOpen(null); return }
+    setOpen(emp.id)
+    if (!grants[emp.id]) {
+      try {
+        const rows = await fetch(`/api/go/employees/${emp.id}/email-access`).then(r => r.json())
+        const set = new Set<string>((Array.isArray(rows) ? rows : []).map((r: any) => r.email_account_id))
+        setGrants(g => ({ ...g, [emp.id]: set }))
+      } catch { setGrants(g => ({ ...g, [emp.id]: new Set() })) }
+    }
+  }
+
+  const toggle = async (empId: string, acctId: string) => {
+    setBusy(true)
+    const has = grants[empId]?.has(acctId)
+    try {
+      if (has) await fetch(`/api/go/employees/${empId}/email-access?email_account_id=${acctId}`, { method: 'DELETE' })
+      else await fetch(`/api/go/employees/${empId}/email-access`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email_account_id: acctId }) })
+      setGrants(g => { const s = new Set(g[empId] || []); if (has) s.delete(acctId); else s.add(acctId); return { ...g, [empId]: s } })
+    } catch { /* noop */ }
+    setBusy(false)
+  }
+
+  const roleLabel: Record<string, string> = { super_admin: 'Developer', admin: 'Admin', employee: 'Employee' }
+
+  return (
+    <div className="border-t border-white/5 pt-6 space-y-4">
+      <div>
+        <h2 className="text-white text-xl font-display mb-1">Employee Email Access</h2>
+        <p className="text-white/40 text-sm font-body">Pick which mailboxes each employee can use. Admins &amp; developers see all.</p>
+      </div>
+      {loading ? <p className="text-white/30 text-sm">Loading…</p> : emps.length === 0 ? <p className="text-white/30 text-sm">No team members yet — invite someone above.</p> : (
+        <div className="space-y-2">
+          {emps.map(emp => {
+            const isAdmin = emp.role === 'admin' || emp.role === 'super_admin'
+            return (
+              <div key={emp.id} className="bg-[#111] border border-white/5 rounded-lg">
+                <button onClick={() => !isAdmin && expand(emp)} className={`w-full flex items-center gap-3 p-3 text-left ${isAdmin ? 'cursor-default' : 'cursor-pointer hover:bg-white/[0.02]'}`}>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white text-sm font-heading truncate">{emp.name || emp.email}</p>
+                    <p className="text-white/40 text-xs font-body truncate">{emp.email}</p>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wider font-heading px-2 py-0.5 rounded-full bg-gold/10 text-gold/60 shrink-0">{roleLabel[emp.role] || emp.role}</span>
+                  {isAdmin ? <span className="text-white/30 text-xs font-body shrink-0">Full access</span> : <span className="text-white/30 text-xs shrink-0">{open === emp.id ? '▲' : '▼'}</span>}
+                </button>
+                {!isAdmin && open === emp.id && (
+                  <div className="border-t border-white/5 p-3 space-y-2">
+                    {accts.length === 0 ? <p className="text-white/30 text-xs">No email accounts to assign.</p> : accts.map(a => (
+                      <label key={a.id} className="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" disabled={busy} checked={!!grants[emp.id]?.has(a.id)} onChange={() => toggle(emp.id, a.id)} className="accent-gold w-4 h-4" />
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: a.color || '#D4A84C' }} />
+                        <span className="text-white/70 text-sm font-body truncate">{a.display_name} <span className="text-white/30">· {a.email}</span></span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Tab = 'overview' | 'dogs' | 'services' | 'store' | 'customers' | 'payments' | 'messages' | 'settings' | 'analytics'
+type Tab = 'overview' | 'dogs' | 'services' | 'store' | 'orders' | 'customers' | 'payments' | 'messages' | 'settings' | 'analytics'
 type ToastType = { message: string; type: 'success' | 'error'; id: number }
 
 interface DogAdmin {
@@ -273,6 +529,7 @@ const icons = {
   services: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
   customers: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
   payments: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
+  orders: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/><path d="M9 14h6"/></svg>,
   messages: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
   settings: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
   analytics: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
@@ -295,6 +552,7 @@ const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: bool
   { id: 'dogs', label: 'Dogs', icon: 'dogs', badge: true },
   { id: 'services', label: 'Services', icon: 'services', badge: true },
   { id: 'store', label: 'Store', icon: 'store', badge: true },
+  { id: 'orders', label: 'Orders', icon: 'orders' },
   { id: 'customers', label: 'Customers', icon: 'customers', comingSoon: true },
   { id: 'payments', label: 'Payments', icon: 'payments' },
   { id: 'messages', label: 'Email', icon: 'messages' },
@@ -304,8 +562,8 @@ const navItems: { id: Tab; label: string; icon: keyof typeof icons; badge?: bool
 const mobileNavItems: { id: Tab | 'more'; label: string; icon: keyof typeof icons }[] = [
   { id: 'overview', label: 'Home', icon: 'overview' },
   { id: 'dogs', label: 'Dogs', icon: 'dogs' },
+  { id: 'orders', label: 'Orders', icon: 'orders' }, // raised, colorful — primary daily task (Pay moved to More)
   { id: 'store', label: 'Store', icon: 'store' },
-  { id: 'payments', label: 'Pay', icon: 'payments' },
   { id: 'more', label: 'More', icon: 'more' },
 ]
 
@@ -528,10 +786,10 @@ function PaymentsPanel({ adminFetch, adminPost, showToast }: {
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function ManagePage() {
   const [authState, setAuthState] = useState<'checking' | 'locked' | 'authenticated'>('checking')
-  const [token, setToken] = useState('')
-  const [passwordInput, setPasswordInput] = useState('')
-  const [authError, setAuthError] = useState('')
-  const [authLoading, setAuthLoading] = useState(false)
+  // Bearer token retained only for the large-file Sanity upload path in
+  // useAdminApi; same-origin dashboard calls authenticate via the
+  // Supabase session cookie (requireEmailAuth).
+  const [token] = useState('')
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [toasts, setToasts] = useState<ToastType[]>([])
@@ -584,6 +842,7 @@ export default function ManagePage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [markupType, setMarkupType] = useState<'percentage' | 'fixed'>('percentage')
   const [markupValue, setMarkupValue] = useState('')
+  const [finalPrice, setFinalPrice] = useState('')
   const [pricingLoading, setPricingLoading] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<any | null>(null)
@@ -591,22 +850,13 @@ export default function ManagePage() {
   const [priceValue, setPriceValue] = useState('')
   const [priceSaving, setPriceSaving] = useState(false)
 
-  // Session check
+  // Auth is now enforced app-wide by AuthGuard (Supabase session) in
+  // app/go/layout.tsx. The old x-admin-password prompt is neutralized
+  // here so it doesn't double-prompt. Dashboard APIs accept the
+  // Supabase session cookie (via requireEmailAuth) so no bearer token
+  // is needed for same-origin calls.
   useEffect(() => {
-    const saved = localStorage.getItem('ct-admin-token')
-    if (saved) {
-      // Verify token is still valid
-      fetch('/api/go/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: saved }),
-      }).then(res => {
-        if (res.ok) { setToken(saved); setAuthState('authenticated') }
-        else { localStorage.removeItem('ct-admin-token'); setAuthState('locked') }
-      }).catch(() => { setToken(saved); setAuthState('authenticated') }) // offline = trust cached token
-    } else {
-      setAuthState('locked')
-    }
+    setAuthState('authenticated')
   }, [])
 
   // ─── Browser History Management (Android back button) ────────────────────
@@ -690,23 +940,6 @@ export default function ManagePage() {
         .finally(() => setSettingsLoading(false))
     }
   }, [authState, activeTab, adminFetch, showToast])
-
-  // Auth handler
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault(); setAuthError(''); setAuthLoading(true)
-    try {
-      const res = await fetch('/api/go/auth', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: passwordInput }),
-      })
-      const data = await res.json()
-      if (!res.ok) { setAuthError(data.error || 'Login failed'); return }
-      setToken(data.token)
-      localStorage.setItem('ct-admin-token', data.token)
-      setAuthState('authenticated')
-    } catch { setAuthError('Connection error') }
-    finally { setAuthLoading(false) }
-  }
 
   const switchTab = (tab: Tab) => {
     setActiveTab(tab); setSidebarOpen(false)
@@ -945,6 +1178,21 @@ export default function ManagePage() {
     finally { setPricingLoading(false) }
   }
 
+  const handleSetRetail = async () => {
+    if (!editingProduct || !finalPrice) return
+    setPricingLoading(true)
+    try {
+      const result = await adminPost('/api/go/store', {
+        action: 'set_retail',
+        payload: { id: editingProduct.id, printful_id: editingProduct.printful_id, amount: parseFloat(finalPrice) },
+      })
+      showToast(`Set all ${result.updated} variants to $${Number(result.price).toFixed(2)}${result.margin != null ? ` · ${result.margin}% margin` : ''}`)
+      setFinalPrice('')
+      await loadProductDetail(editingProduct)
+    } catch (err: any) { showToast(err.message, 'error') }
+    finally { setPricingLoading(false) }
+  }
+
   const handleSyncPrintful = async () => {
     setSyncing(true); setSyncResult(null)
     try {
@@ -1014,24 +1262,12 @@ export default function ManagePage() {
     </div>
   )
 
+  // 'locked' state is unreachable now (AuthGuard handles the gate).
+  // Render the loader instead of an admin-password prompt so there is
+  // no double prompt.
   if (authState === 'locked') return (
     <div className="fixed inset-0 z-[9999] bg-[#0a0a0a] flex items-center justify-center">
-      <form onSubmit={handleLogin} className="w-full max-w-sm space-y-6 px-6">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gold/10 border border-gold/20 flex items-center justify-center">
-            <span className="font-display text-gold text-xl">CT</span>
-          </div>
-          <h1 className="text-2xl font-display text-white mb-1">Admin Dashboard</h1>
-          <p className="text-white/40 text-sm font-body">Enter admin password to continue</p>
-        </div>
-        <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Admin password" autoFocus
-          className={`${inputCls} text-center text-lg tracking-widest`} />
-        {authError && <p className="text-red-400 text-sm text-center font-body">{authError}</p>}
-        <button type="submit" disabled={authLoading || !passwordInput} className="w-full py-3 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">
-          {authLoading ? 'Verifying...' : 'Sign In'}
-        </button>
-        <Link href="/go" className="block text-center text-white/30 text-xs font-heading hover:text-gold transition-colors">Back to Command Center</Link>
-      </form>
+      <div className="text-gold animate-pulse font-display text-lg">Loading...</div>
     </div>
   )
 
@@ -1064,6 +1300,12 @@ export default function ManagePage() {
         .ct-mobile-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px; color: rgba(255,255,255,0.35); font-size: 10px; transition: color 0.2s; position: relative; }
         .ct-mobile-btn.active { color: #D0B970; }
         .ct-mobile-btn.active::before { content: ''; position: absolute; top: 0; left: 25%; right: 25%; height: 2px; background: #D0B970; border-radius: 0 0 2px 2px; }
+        /* Raised, colorful Orders button — the daily-driver action */
+        .ct-mobile-btn.hot { color: #f5d77a; }
+        .ct-mobile-btn.hot::before { display: none; }
+        .ct-orders-badge { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; margin-top: -16px; margin-bottom: 1px; border-radius: 50%; color: #120d04; background: linear-gradient(135deg, #f7e08a 0%, #D0B970 45%, #c4862f 100%); box-shadow: 0 6px 16px rgba(208,185,112,0.5), 0 0 0 4px #0e0e0e; }
+        .ct-orders-badge svg { width: 20px; height: 20px; }
+        .ct-mobile-btn.hot.active .ct-orders-badge { box-shadow: 0 6px 20px rgba(208,185,112,0.8), 0 0 0 4px #0e0e0e; }
         .ct-mobile-header { display: none; position: sticky; top: 0; z-index: 50; background: rgba(10,10,10,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(208,185,112,0.08); padding: 12px 16px; }
         @media (max-width: 900px) { .ct-mobile-header { display: flex; align-items: center; gap: 12px; } }
         .ct-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 99; }
@@ -1102,15 +1344,13 @@ export default function ManagePage() {
                 </button>
               ))}
               <div className="my-4 border-t border-white/5" />
-              <Link href="/go" onClick={() => setSidebarOpen(false)} className="ct-nav-item w-full font-heading">
-                <span className="ct-nav-icon">{icons.checklist}</span><span>Setup Checklist</span><span className="ct-nav-icon ml-auto">{icons.external}</span>
-              </Link>
               <Link href="/" target="_blank" className="ct-nav-item w-full font-heading">
                 <span className="ct-nav-icon">{icons.external}</span><span>View Live Site</span>
               </Link>
             </nav>
           </div>
-          <div className="mt-auto p-5 border-t border-white/5">
+          <div className="mt-auto p-5 border-t border-white/5 space-y-4">
+              <PWAInstall />
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center"><span className="text-gold text-xs font-heading">A</span></div>
               <div><p className="text-white text-sm font-heading">Admin</p><p className="text-gold/40 text-[10px] font-heading">Crunchtyme Bullies</p></div>
@@ -1400,6 +1640,9 @@ export default function ManagePage() {
                   <button onClick={saveSettings} disabled={settingsSaving} className="w-full py-3.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold hover:bg-gold/90 transition-colors disabled:opacity-50">
                     {settingsSaving ? 'Saving...' : 'Save Settings'}</button>
                 </>)}
+                <TeamAccessSection />
+                <EmailAccountsManager />
+                <EmployeeAccessManager />
               </div>
             )}
 
@@ -1530,13 +1773,23 @@ export default function ManagePage() {
                       {product.thumbnail ? <img src={product.thumbnail} alt={product.title} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-white/10">{icons.store}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-white font-heading truncate">{product.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-white font-heading truncate">{product.title}</p>
+                        {product.needs_attention && (
+                          <span title={product.needs_attention_reason || 'Needs attention'} className="shrink-0 text-[9px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border bg-amber-500/15 text-amber-300 border-amber-500/40 flex items-center gap-1">
+                            <span>⚠</span> Needs Attention
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         <button onClick={e => { e.stopPropagation(); toggleProductStatus(product) }}>
                           <span className={`text-[10px] tracking-wider uppercase font-heading px-2 py-0.5 rounded-full border ${product.status === 'published' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-white/10 text-white/40 border-white/20'}`}>{product.status}</span>
                         </button>
                         <span className="text-white/25 text-xs font-body">{product.variants_count}v</span>
                         {product.first_price && <span className="text-gold/50 text-xs font-heading">${product.first_price.amount.toFixed(2)}</span>}
+                        {product.needs_attention && product.needs_attention_reason && (
+                          <span className="text-amber-300/60 text-[10px] font-body w-full mt-1 italic">{product.needs_attention_reason}</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1577,10 +1830,48 @@ export default function ManagePage() {
                   </div>
                 )}
 
+                {/* SITE PRICE — what customers actually pay + set the final price directly */}
+                {productDetail && (
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-gold/10 to-transparent border border-gold/25">
+                    <div className="flex items-baseline justify-between mb-3">
+                      <div>
+                        <p className="text-gold/60 text-[10px] uppercase tracking-wider font-heading">Current site price</p>
+                        <p className="text-white text-2xl font-display">
+                          {productDetail.site_price > 0
+                            ? (productDetail.site_price_max && productDetail.site_price_max !== productDetail.site_price
+                                ? `$${(productDetail.site_price / 100).toFixed(2)} – $${(productDetail.site_price_max / 100).toFixed(2)}`
+                                : `$${(productDetail.site_price / 100).toFixed(2)}`)
+                            : 'Not priced'}
+                        </p>
+                      </div>
+                      {productDetail?.stats?.avg_cost > 0 && (
+                        <div className="text-right">
+                          <p className="text-white/30 text-[10px] uppercase tracking-wider font-heading">Avg cost</p>
+                          <p className="text-white/60 text-sm font-heading">${(productDetail.stats.avg_cost / 100).toFixed(2)}</p>
+                        </div>
+                      )}
+                    </div>
+                    <label className="text-white/40 text-[10px] uppercase tracking-wider font-heading block mb-1.5">Set final price (applies to every variant)</label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">$</span>
+                        <input type="number" value={finalPrice} onChange={e => setFinalPrice(e.target.value)} placeholder="e.g. 29.99"
+                          className={`${inputCls} pl-8 py-2.5 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`} />
+                      </div>
+                      <button onClick={handleSetRetail} disabled={pricingLoading || !finalPrice} className="px-5 py-2.5 rounded-lg bg-gold text-[#0a0a0a] font-heading font-semibold text-xs hover:bg-gold/90 transition-colors disabled:opacity-50">{pricingLoading ? 'Saving…' : 'Set price'}</button>
+                    </div>
+                    {finalPrice && parseFloat(finalPrice) > 0 && productDetail?.stats?.avg_cost > 0 && (() => {
+                      const fp = parseFloat(finalPrice); const c = productDetail.stats.avg_cost / 100
+                      const profit = fp - c; const margin = fp > 0 ? (profit / fp) * 100 : 0
+                      return <p className="text-white/30 text-[10px] font-body mt-2">At ${fp.toFixed(2)}: <span className="text-emerald-400/70">${profit.toFixed(2)} profit</span> · <span className={margin >= 20 ? 'text-emerald-400/70' : margin >= 10 ? 'text-amber-400/70' : 'text-red-400/70'}>{margin.toFixed(1)}% margin</span> (avg)</p>
+                    })()}
+                  </div>
+                )}
+
                 {productDetail && editingProduct.printful_id && (
                   <div className="p-4 rounded-xl bg-[#111] border border-white/5">
-                    <h3 className="text-white text-sm font-heading mb-3">Bulk Pricing Tool</h3>
-                    <p className="text-white/30 text-xs font-body mb-4">Set all variant prices based on Printful cost. Applies to all {editingProduct.variants_count} variants.</p>
+                    <h3 className="text-white text-sm font-heading mb-1">Or price by markup</h3>
+                    <p className="text-white/30 text-xs font-body mb-4">Auto-calculate from Printful cost. Applies to all {editingProduct.variants_count} variants.</p>
                     <div className="flex gap-2 mb-3">
                       <button onClick={() => setMarkupType('percentage')} className={`flex-1 py-2 rounded-lg border text-xs font-heading transition-colors ${markupType === 'percentage' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/30'}`}>% Markup</button>
                       <button onClick={() => setMarkupType('fixed')} className={`flex-1 py-2 rounded-lg border text-xs font-heading transition-colors ${markupType === 'fixed' ? 'border-gold bg-gold/10 text-gold' : 'border-white/10 text-white/30'}`}>$ Fixed Add</button>
@@ -1615,15 +1906,22 @@ export default function ManagePage() {
                     <h3 className="text-white text-sm font-heading mb-3">Variant Breakdown ({productDetail.variants.length})</h3>
                     <div className="overflow-x-auto -mx-4 px-4">
                       <table className="w-full text-xs">
-                        <thead><tr className="text-white/30 font-heading uppercase tracking-wider border-b border-white/5"><th className="text-left py-2 pr-3">Variant</th><th className="text-right py-2 px-2">Cost</th><th className="text-right py-2 px-2">Retail</th><th className="text-right py-2 px-2">Profit</th><th className="text-right py-2 pl-2">Margin</th></tr></thead>
+                        <thead><tr className="text-white/30 font-heading uppercase tracking-wider border-b border-white/5"><th className="text-left py-2 pr-3">Variant</th><th className="text-right py-2 px-2">Cost</th><th className="text-right py-2 px-2 text-gold/50">Site $</th><th className="text-right py-2 px-2">Profit</th><th className="text-right py-2 pl-2">Margin</th></tr></thead>
                         <tbody>
                           {productDetail.variants.map((v: any, i: number) => (
                             <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02]">
                               <td className="py-2 pr-3"><span className="text-white/60 font-body">{v.color}{v.color && v.size ? ' / ' : ''}{v.size}</span></td>
                               <td className="text-right py-2 px-2 text-white/40 font-body">{v.cost_price > 0 ? `$${(v.cost_price / 100).toFixed(2)}` : '—'}</td>
-                              <td className="text-right py-2 px-2 text-gold/70 font-heading">${(v.retail_price / 100).toFixed(2)}</td>
-                              <td className="text-right py-2 px-2 text-emerald-400/70 font-body">{v.profit > 0 ? `$${(v.profit / 100).toFixed(2)}` : '—'}</td>
-                              <td className={`text-right py-2 pl-2 font-heading ${v.margin > 20 ? 'text-emerald-400/70' : v.margin > 10 ? 'text-amber-400/70' : 'text-red-400/70'}`}>{v.margin > 0 ? `${v.margin}%` : '—'}</td>
+                              <td className="text-right py-2 px-2 text-gold font-heading">${((v.medusa_price || v.retail_price) / 100).toFixed(2)}</td>
+                              {(() => {
+                                const site = (v.medusa_price || v.retail_price) || 0
+                                const sp = v.cost_price > 0 ? site - v.cost_price : 0
+                                const sm = site > 0 && v.cost_price > 0 ? Math.round((sp / site) * 1000) / 10 : 0
+                                return <>
+                                  <td className="text-right py-2 px-2 text-emerald-400/70 font-body">{sp > 0 ? `$${(sp / 100).toFixed(2)}` : '—'}</td>
+                                  <td className={`text-right py-2 pl-2 font-heading ${sm > 20 ? 'text-emerald-400/70' : sm > 10 ? 'text-amber-400/70' : 'text-red-400/70'}`}>{sm > 0 ? `${sm}%` : '—'}</td>
+                                </>
+                              })()}
                             </tr>
                           ))}
                         </tbody>
@@ -1648,6 +1946,7 @@ export default function ManagePage() {
               </div>
             )}
             {activeTab === 'customers' && <ComingSoon title="Customer Management" description="Track buyers, manage inquiries, view purchase history, and build your client relationships." icon="customers" />}
+            {activeTab === 'orders' && <OrdersPanel adminFetch={adminFetch} adminPost={adminPost} showToast={showToast} />}
             {activeTab === 'payments' && <PaymentsPanel adminFetch={adminFetch} adminPost={adminPost} showToast={showToast} />}
             {activeTab === 'messages' && (() => { if (typeof window !== 'undefined') window.location.href = '/go/inbox'; return <div className="flex items-center justify-center py-20"><p className="text-white/40 font-body">Redirecting to Email Inbox...</p></div>; })()}
             {activeTab === 'analytics' && <ComingSoon title="Analytics" description="Track website traffic, sales metrics, popular dogs, and conversion rates with detailed reports." icon="analytics" />}
@@ -1657,12 +1956,18 @@ export default function ManagePage() {
 
       {/* MOBILE BOTTOM NAV */}
       <div className="ct-mobile-nav">
-        {mobileNavItems.map(item => (
-          <button key={item.id} onClick={() => item.id === 'more' ? (setSidebarOpen(true), pushAdminState(activeTab, 'sidebar')) : switchTab(item.id as Tab)}
-            className={`ct-mobile-btn font-heading ${item.id !== 'more' && activeTab === item.id ? 'active' : ''}`}>
-            {icons[item.icon]}<span>{item.label}</span>
-          </button>
-        ))}
+        {mobileNavItems.map(item => {
+          const isOrders = item.id === 'orders'
+          return (
+            <button key={item.id} onClick={() => item.id === 'more' ? (setSidebarOpen(true), pushAdminState(activeTab, 'sidebar')) : switchTab(item.id as Tab)}
+              className={`ct-mobile-btn font-heading ${isOrders ? 'hot' : ''} ${item.id !== 'more' && activeTab === item.id ? 'active' : ''}`}>
+              {isOrders
+                ? <span className="ct-orders-badge">{icons.orders}</span>
+                : icons[item.icon]}
+              <span>{item.label}</span>
+            </button>
+          )
+        })}
       </div>
     </div>
   )
